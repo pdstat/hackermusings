@@ -1,4 +1,4 @@
-# Zseano playground
+# XSS Playground by Zseano 
 
 Can you find all of the XSS on this page? Use a keen eye and see if you can dsiver the following types of XSS
 

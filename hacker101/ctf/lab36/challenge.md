@@ -119,7 +119,7 @@ var tracking = JSON.stringify(result);
 var who = (tracking = JSON.parse(tracking)).who;
 ```
 
-We can see who can be a property of the has value and end up in the tracking object.
+We can see who can be a property of the hash value and end up in the tracking object.
 
 custom.js also has this snippet as the last line of the script
 

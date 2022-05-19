@@ -378,4 +378,20 @@ Server: openresty/1.19.9.1
 X-Powered-By: PHP/7.2.34
 ```
 
-Hmmm not what I expected? This felt like the flag?!
+Hmmm not what I expected? This felt like the flag?!....
+
+### Helper php?
+
+Not sure why this is being linked to as script, it doesn't appear to do anything
+
+```html
+<script src="helper.php?v=1.0.0"></script>
+```
+
+The v parameter just reflects the parameter in the response which is why we see this in the console
+
+```
+Uncaught SyntaxError: unexpected token: numeric literal   helper.php:2:3
+```
+
+So if the value of v were some javascript it could evaluate it on the page....

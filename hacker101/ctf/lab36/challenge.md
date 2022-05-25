@@ -1,5 +1,7 @@
 # XSS Playground by Zseano 
 
+https://ctf.hacker101.com/ctf/start/36
+
 Can you find all of the XSS on this page? Use a keen eye and see if you can dsiver the following types of XSS
 
 - 5 reflected
@@ -395,3 +397,6 @@ Uncaught SyntaxError: unexpected token: numeric literal   helper.php:2:3
 ```
 
 So if the value of v were some javascript it could evaluate it on the page....
+
+
+TBC...

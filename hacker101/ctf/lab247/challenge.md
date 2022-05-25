@@ -8,4 +8,4 @@ can you recon??
 
 Lets' find out! So the main page seems to have this with some upload functionality
 
-![File dropper](/images/file-dropper.png)
+![File dropper](./images/file-dropper.png)

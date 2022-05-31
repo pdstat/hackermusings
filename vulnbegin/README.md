@@ -55,6 +55,32 @@ Another check of the help reveals we can limit the threads with the -t and set t
 ffuf -u 'https://www.vulnbegin.co.uk/FUZZ' -w /usr/share/wordlists/ctfchallenge/content.txt -H "Cookie: ctfchallenge=xxxxx" -t 1 -p 0.1
 ```
 
-cppanel
+I don't know why but requests made with ffuf to this domain timeout every time, no matter what setting I put for the thread count/delay between requests. So instead I switched over to using Burp Intruder and sniper mode on the directory. Using the provided content.txt as my payload list
 
-admin
+![position](./images/vulnbegin-03.png)
+
+Again making sure to limit our requests as per our scope
+
+![resource pool](./images/vulnbegin-04.png)
+
+Plenty of 404 not found responses, except one
+
+![cpadmin](./images/vulnbegin-05.png)
+
+OK using the path in the browser redirects me to /cpadmin/login, a login page! Let's try a quick basic SQLi check
+
+![alt](./images/vulnbegin-06.png)
+
+OK that didn't work, BUT it does give a specific message about an invalid username. Let's try admin before fuzzing the usernames save some time.
+
+![admin worked](./images/vulnbegin-07.png)
+
+Success. OK time to fuzz passwords, again in Burp similar to the previous fuzz but with a POST request for login
+
+And we get another 302 redirect with this payload
+
+![password](./images/vulnbegin-08.png)
+
+Yay got flag no.5
+
+![flag](./images/vulnbegin-09.png)

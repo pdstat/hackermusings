@@ -111,3 +111,121 @@ OK the fuzz results came back, another directory
 Yay another flag (no. 6), and an API token
 
 ![api key](./images/vulnbegin-11.png)
+
+Ummm ok, let's do a fuzz against the /cpadmin/env/FUZZ directory....
+
+That came back with nothing. It looks like we may have an API somewhere, so lets FUZZ content on http://v64hss83.vulnbegin.co.uk/
+
+Again nothing much, most results return the same flag, and anything with a .php extension returns a 404 response...
+
+OK so let's review the wordlists provided by ctfchallenge again
+
+```
+└─$ ls -ltr /usr/share/wordlists/ctfchallenge
+total 224
+-rwxrwxrwx 1 kali kali 71039 Jun 17  2021 usernames.txt
+-rwxrwxrwx 1 kali kali 11957 Jun 17  2021 subdomains.txt
+-rwxrwxrwx 1 kali kali 37655 Jun 17  2021 content.txt
+-rwxrwxrwx 1 kali kali 76508 Jun 17  2021 passwords-large.txt
+-rwxrwxrwx 1 kali kali 19302 Jun 17  2021 parameters.txt
+-rwxrwxrwx 1 kali kali   754 Jun 17  2021 passwords.txt
+```
+
+Let's check out the subdomains wordlist, I already have one subdomain via assetfinder but there may be more.
+
+![flag 3](images/vulnbegin-12.png)
+
+Yay another flag! (no. 3). OK so I'm not authenticatd apparently, I wonder if I can use that token I found.
+
+Tweak the request to include the X-Token
+
+```
+GET / HTTP/1.1
+Host: server.vulnbegin.co.uk
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+X-Token: xxxxxx
+Connection: close
+Cookie: ctfchallenge=xxxx
+```
+
+And.....
+
+```
+HTTP/1.1 200 OK
+server: nginx/1.21.1
+date: Sun, 05 Jun 2022 08:29:35 GMT
+content-type: application/json
+set-cookie: ctfchallenge=xxxxxxxxxxx
+connection: close
+Content-Length: 89
+
+{"messaged":"User Authenticated","flag":"XXXXXXXXXXXXXXXXXXXXXX"}
+```
+
+Yes flag no.7 :). OK so we have flags: 1, 8 + 9 remaining. 
+
+Let's step back in the recon, I've done content discovery and subdomain enumeration against the main domain. But I've not had a closer look at the main domain itself. To nslookup
+
+```
+└─$ nslookup -type=any vulnbegin.co.uk
+main parsing vulnbegin.co.uk
+addlookup()
+make_empty_lookup()
+make_empty_lookup() = 0x7fdce359e000->references = 1
+looking up vulnbegin.co.uk
+lock_lookup dighost.c:4184
+success
+start_lookup()
+setup_lookup(0x7fdce359e000)
+resetting lookup counter.
+cloning server list
+clone_server_list()
+make_server(192.168.1.1)
+idn_textname: vulnbegin.co.uk
+using root origin
+recursive query
+add_question()
+starting to render the message
+done rendering
+create query 0x7fdce222d000 linked to lookup 0x7fdce359e000
+dighost.c:2083:lookup_attach(0x7fdce359e000) = 2
+dighost.c:2587:new_query(0x7fdce222d000) = 1
+do_lookup()
+start_tcp(0x7fdce222d000)
+dighost.c:2693:query_attach(0x7fdce222d000) = 2
+query->servname = 192.168.1.1
+```
+
+It seems to get stuck on ```query->servname = 192.168.1.1```, so let's add the google DNS
+
+```
+└─$ nslookup -type=any vulnbegin.co.uk 8.8.8.8
+main parsing vulnbegin.co.uk
+addlookup()
+make_empty_lookup()
+make_empty_lookup() = 0x7f2cc419e000->references = 1
+looking up vulnbegin.co.uk
+...
+...
+Non-authoritative answer:
+printsection()
+Name:	vulnbegin.co.uk
+Address: 68.183.255.206
+vulnbegin.co.uk	nameserver = ns1.digitalocean.com.
+vulnbegin.co.uk	nameserver = ns2.digitalocean.com.
+vulnbegin.co.uk	nameserver = ns3.digitalocean.com.
+vulnbegin.co.uk
+	origin = ns1.digitalocean.com
+	mail addr = hostmaster.vulnbegin.co.uk
+	serial = 1626211765
+	refresh = 10800
+	retry = 3600
+	expire = 604800
+	minimum = 1800
+vulnbegin.co.uk	text = "[^FLAG^XXXXXXXXXXXXXXXXXX^FLAG^]"
+```
+
+Cool there's flag no.1 :)

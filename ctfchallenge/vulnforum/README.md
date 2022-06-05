@@ -105,7 +105,7 @@ HTTP/1.1 403 Forbidden
 server: nginx/1.21.1
 date: Sun, 05 Jun 2022 19:33:06 GMT
 content-type: application/json
-set-cookie: ctfchallenge=eyJkYXRhIjoiZXlKMWMyVnlYMmhoYzJnaU9pSTBkalJsY1hsa2VDSXNJbkJ5WlcxcGRXMGlPbVpoYkhObGZRPT0iLCJ2ZXJpZnkiOiIyYzE2MGJkOWI0ZDBkYmE5NDRjYjM5MGVjMDcwYWZhYiJ9; Max-Age=2592000; Path=/; domain=.vulnforum.co.uk
+set-cookie: ctfchallenge=xxxxxx; Max-Age=2592000; Path=/; domain=.vulnforum.co.uk
 connection: close
 Content-Length: 187
 
@@ -118,4 +118,65 @@ It also revealed a hidden subdomain with a path ```http://4v4eqydx.auth.vulnforu
 
 ![invalid domain](./images/vulnforum-05.png)
 
-OK, well it responded with content so it can't be that invalid surely? Let's try some content discovery from the root path
+OK, well it responded with content so it can't be that invalid surely? Let's try some content discovery from the root path.
+
+Whilst that runs in the background I decided to check the subdomains via assetfinder
+
+```
+└─$ assetfinder -subs-only vulnforum.co.uk  
+www.vulnforum.co.uk
+vulnforum.co.uk
+vulnforum.co.uk
+vulnforum.co.uk
+*.www.vulnforum.co.uk
+auth.vulnforum.co.uk
+*.vulnforum.co.uk
+vulnforum.co.uk
+*.www.vulnforum.co.uk
+```
+
+So auth is on there, but it doesn't respond. I should probably try fuzzing the subdomain such as ```FUZZ.auth.vulnforum.co.uk```
+
+Yeah the content discovery at the root of the 'invalid domain' returned nothing so lets start the subdomain fuzz...
+
+Nope nothing. OK let's attempt content discovery again this time from ```4v4eqydx.auth.vulnforum.co.uk/auth/FUZZ```
+
+Again nothing...
+
+OK let's step back take a closer look at that ```4v4eqydx.auth.vulnforum.co.uk``` subdomain. Let's check it with the host command
+
+```
+└─$ host 4v4eqydx.auth.vulnforum.co.uk
+4v4eqydx.auth.vulnforum.co.uk is an alias for vulnauth.co.uk.
+vulnauth.co.uk has address 68.183.255.206
+```
+
+Ahhh a new domain entirely, let's check it!
+
+Yay finally! Have flag no.2
+
+![vulnauth](./images/vulnforum-06.png)
+
+Playing around with the form so far I always receive an error in the validation
+
+```html
+<div class="alert alert-danger" role="alert">
+    <p>domain name has already been registered </p>
+    <p>Email address is already signed up </p>
+</div>
+```
+
+OK let's do some more subdomain enumeration on our new domain
+
+```
+└─$ assetfinder -subs-only vulnauth.co.uk 
+vulnauth.co.uk
+admin.vulnauth.co.uk
+hostmaster.vulnauth.co.uk
+```
+
+So hostmaster gives me the same 'invalid domain' response I've seen before, but admin presents me with a redirect to a login screen
+
+![admin login](./images/vulnforum-07.png)
+
+I don't have any email addresses to try yet!

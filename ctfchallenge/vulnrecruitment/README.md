@@ -221,3 +221,97 @@ Well it doesn't tell me no :D! Let's try. Hah yup! Got a hit on 'zxcvbn'
 ![alt](./images/vulnrecruitment-12.png)
 
 Obviously I have no idea what her local pub is so let's use the password wordlist see if the answer is in there! Nope not even with the large password list.
+
+OK so the other method was using a OTP, can I use that? And is it the same code every time? And no it still prompts me for an answer to the login reminder.
+
+Let's step back and go back in as Archie, perhaps there's some other content to discover as an authenticated user.
+
+Unfortunately /staff/portal has only login, logout and uploads which we know about.
+
+OK so I did this earlier but let's try again. Amelias picture does it contain useful exif data?
+
+```
+─$ exiftool -a ./images/3_d9a39bb5097e8e57d4da9669ea44fd72.jpg 
+ExifTool Version Number         : 12.40
+File Name                       : 3_d9a39bb5097e8e57d4da9669ea44fd72.jpg
+Directory                       : ./images
+File Size                       : 871 KiB
+File Modification Date/Time     : 2022:06:08 06:40:11-04:00
+File Access Date/Time           : 2022:06:08 06:40:11-04:00
+File Inode Change Date/Time     : 2022:06:08 06:40:11-04:00
+File Permissions                : -rw-r--r--
+File Type                       : JPEG
+File Type Extension             : jpg
+MIME Type                       : image/jpeg
+JFIF Version                    : 1.01
+Resolution Unit                 : None
+X Resolution                    : 1
+Y Resolution                    : 1
+Exif Byte Order                 : Big-endian (Motorola, MM)
+Resolution Unit                 : None
+Y Cb Cr Positioning             : Centered
+GPS Latitude Ref                : North
+GPS Latitude                    : 51 deg 37' 47.31"
+GPS Longitude Ref               : East
+GPS Longitude                   : 0 deg 48' 50.82"
+Image Width                     : 1024
+Image Height                    : 1024
+Encoding Process                : Progressive DCT, Huffman coding
+Bits Per Sample                 : 8
+Color Components                : 3
+Y Cb Cr Sub Sampling            : YCbCr4:4:4 (1 1)
+Image Size                      : 1024x1024
+Megapixels                      : 1.0
+GPS Latitude                    : 51 deg 37' 47.31" N
+GPS Longitude                   : 0 deg 48' 50.82" E
+GPS Position                    : 51 deg 37' 47.31" N, 0 deg 48' 50.82" E
+```
+
+It contains a GPS position of 51 deg 37' 47.31" N, 0 deg 48' 50.82" E. When I entered this into Google maps verbatim it just gives me somewhere in Germany.
+
+However that was a mistake, instead I need to search for 51 37' 47.31" N 0 48' 50.82" E
+
+Which brings up a pub of 'The New Welcome Sailor'
+
+![alt](./images/vulnrecruitment-13.png)
+
+And flag no.3 (I blame my lack of knowledge of searching GPS co-ordinates on that one!)
+
+![alt](./images/vulnrecruitment-14.png)
+
+I now have access to a file listing
+
+![alt](./images/vulnrecruitment-15.png)
+
+The request looks like this
+
+```
+POST /staff/portal/uploads HTTP/1.1
+Host: www.vulnrecruitment.co.uk
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 39
+Origin: http://www.vulnrecruitment.co.uk
+Connection: close
+Referer: http://www.vulnrecruitment.co.uk/staff/portal/uploads
+Cookie: token=xxx; ctfchallenge=xxx
+Upgrade-Insecure-Requests: 1
+
+listing_file=upload_file_list_b84w.json
+```
+
+Which just displays a list of jpg's we already know about
+
+```javascript
+<script>
+    var files = [{"name":"uploads\/1_955dc852b26e9375c7b7858b438f80f6.jpg","size":"999454"},{"name":"uploads\/2_0fbbd14791d5032e57cb38013a08c791.jpg","size":"867946"},{"name":"uploads\/3_d9a39bb5097e8e57d4da9669ea44fd72.jpg","size":"891601"},{"name":"uploads\/4_33379393610f7c99f05c85f9f92deaef.jpg","size":"904376"}];
+    $(function() {
+        $.each( files, function(k,v){
+            $('ul#filelist').append('<li><a href="http://b38f1-uploads.vulnrecruitment.co.uk/' + v.name + '">' + v.name + '</a></li>');
+        } );
+    });
+</script>
+```

@@ -36,9 +36,9 @@ OK let's do what I said and go back and do some content discovery on the main do
 
 The view profile buttons link to 
 
-- /staff/1
-- /staff/2
-- /staff/4
+- /staff/1 - Jacob Webster jacob.webster@vulnrecruitment.co.uk
+- /staff/2 - Archie Bentley archie.bentley@vulnrecruitment.co.uk
+- /staff/4 - Abbie Ward abbie.ward@vulnrecruitment.co.uk
 
 Interesting what happened to 3?
 
@@ -160,4 +160,64 @@ YES! I get a hit against ```/uploads/3_d9a39bb5097e8e57d4da9669ea44fd72.jpg```
 
 But who is this mysterious woman? :D
 
-OK perhaps I can extend my attack to a cluster bomb attack to include popular file extensions. Although even with a small list of file extensions that's over 1M requests! Hmmmmmm.......
+OK perhaps I can extend my attack to a cluster bomb attack to include popular file extensions. Although even with a small list of file extensions that's over 1.3M requests! Hmmmmmm....... at a limit of 10 requests per second that's a looooong time, perhaps not!
+
+OK I don't think I'm done with fuzzing yet, I still need to try fuzzing content in
+
+- http://b38f1-uploads.vulnrecruitment.co.uk/uploads/FUZZ
+- http://www.vulnrecruitment.co.uk/staff/FUZZ
+
+I got nothing for uploads, but.... I got a hit on portal for staff
+
+![alt](./images/vulnrecruitment-07.png)
+
+I have a few email address let's try them
+
+- jacob.webster@vulnrecruitment.co.uk - 'User not does have online access'
+- archie.bentley@vulnrecruitment.co.uk - 'Invalid email / password combination'
+- abbie.ward@vulnrecruitment.co.uk - 'User not does have online access'
+
+OK so let's check if I can brute force a login with Archie from the provided password wordlist.
+
+And I get a hit with the password 'thunder'. But it looks like we have 2FA enabled
+
+![alt](./images/vulnrecruitment-08.png)
+
+Let's look at the form
+
+```html
+<form method="post" action="/staff/portal/login">
+    <div class="panel panel-default" style="margin-top:50px">
+        <div class="panel-heading">Login</div>
+        <div class="panel-body">
+            <input type="hidden" name="email" value="archie.bentley@vulnrecruitment.co.uk">
+            <input type="hidden" name="password" value="thunder">
+            <input type="hidden" name="attempt" value="1">
+            <div class="alert alert-info"><p class="text-center">We've sent a 4 digit code to your mobile, you have 3 attempts to enter it below to continue</p></div>
+            <div style="margin-top:7px"><label>4 Digit Code:</label></div>
+            <div><input type="tel" name="otp" class="form-control" maxlength="4"></div>
+        </div>
+    </div>
+    <input type="submit" class="btn btn-success pull-right" value="Login">
+</form>
+```
+
+OK so I suspect I can force 'attempt' to always be one which should allow me to brute force the code....
+
+Yup it takes a while but I get a hit on '3798'. Flag no.2
+
+![alt](./images/vulnrecruitment-09.png)
+
+So the missing staff member is amelia.nixon@vulnrecruitment.co.uk. Quick nosey at the uploads tab
+
+![alt](./images/vulnrecruitment-10.png)
+
+I wonder if amelia still has acccess to the portal, and perhaps she was an admin?
+
+![alt](./images/vulnrecruitment-11.png)
+
+Well it doesn't tell me no :D! Let's try. Hah yup! Got a hit on 'zxcvbn'
+
+![alt](./images/vulnrecruitment-12.png)
+
+Obviously I have no idea what her local pub is so let's use the password wordlist see if the answer is in there! Nope not even with the large password list.

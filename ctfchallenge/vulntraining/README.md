@@ -243,6 +243,8 @@ One last thing to try was to fire up my collab client grab the host/domain and t
 
 ./![alt](./images/vulntraining-14.png)
 
+Notice how the path is /admin/users/invoices the value I used was <burp-collab-server>/admin/users. So it must use /invoices by default. So why admin.vulntraining.co.uk didn't work is a mystery.
+
 As someone who has developed a lot of API's over the years I'm horrified if this was a true scenario, why oh why would you allow the base URL to an API be configurable on user input in the browser like this! This was a tricky flag to find
 
 Anyway.... I can use the token now, back to those end points we found before.

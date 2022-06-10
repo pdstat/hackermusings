@@ -119,3 +119,96 @@ Another quick check of the .git path shows me the 403 page of nginx
 ![alt](./images/vulntraining-07.png)
 
 The version is different 1.14.0 other pages have shown 1.18.0. A quick google suggests that this version could be vulnerable to HTTP request smuggling!
+
+After a bit of playing around with the HTTP Request Smuggler in Burp I however determined that this was unlikely. So I tried a fuzz on /.git/FUZZ. And got a hit with config, and the response showed this :)
+
+```
+HTTP/1.1 200 OK
+server: nginx/1.21.1
+date: Thu, 09 Jun 2022 15:50:31 GMT
+content-type: application/octet-stream
+set-cookie: ctfchallenge=xxx; Max-Age=2592000; Path=/; domain=.vulntraining.co.uk
+connection: close
+Content-Length: 288
+
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = true
+[remote "origin"]
+	url = https://github.com/vuln-tr4in1ng-projects/website_framework.git
+	fetch = +refs/heads/*:refs/remotes/origin/*
+[branch "master"]
+	remote = origin
+	merge = refs/heads/master
+```
+
+Quick visit to the github repo showed this (flag no.6)
+
+![flag](./images/vulntraining-08.png)
+
+And there was also detail about a commit removing DB credentials!!
+
+![alt](./images/vulntraining-09.png)
+
+Back to the super secret phpMyAdmin and I can sign in now :)
+
+![alt](./images/vulntraining-10.png)
+
+Flag no.7 and a user/password for the billing portal
+
+The password however is a base64 string of a hash, and a partial one at that. At least now though I have a valid user
+
+![alt](./images/vulntraining-11.png)
+
+Using Burp Intruder and our password list I get a hit with '987654321'
+
+![alt](./images/vulntraining-12.png)
+
+Flag no. 8 found. Links 1-4 just show invoices
+
+![I](./images/vulntraining-13.png)
+
+The bottom of each page has an interesting HTML comment
+
+```html
+</script>
+<!--
+API Response Time 0.0001
+-->
+</body>
+```
+
+So it must be getting its data from an API. What's the bet its from c867fc3a.vulntraining.co.uk or admin.vulntraining.co.uk
+
+FUZZ!!!
+
+First c867fc3a.vulntraining.co.uk/FUZZ - nope
+
+Now admin.vulntraining.co.uk/FUZZ - we have admin and invoices both 401 responses
+
+Let's continue to fuzz on those paths.
+
+- /invoices/X seems to respond with another 401 where X is numeric, will wait for the FUZZ to complete and then do another fuzz on /invoices/1/FUZZ for example
+- /invoices/1/FUZZ - all 404 responses
+- /admin/FUZZ - one hit on users
+- /admin/users/FUZZ - hits on numbers 1 etc. all respond with 401
+- /admin/users/1/FUZZ - all 404 responses
+
+In conclusion known endpoints for admin.vulntraining.co.uk
+
+- GET /
+- GET /admin/users/{ID}
+- GET /invoices/{ID}
+
+Also tried to use the other HTTP verbs POST, PUT, DELETE, OPTIONS, TRACE, HEAD, CONNECT on the above none of which worked.
+
+Notes are good, I've not mentioned FUZZ on billing.vulntraining.co.uk let's try that!
+
+- /1 - known
+- /2 - known
+- /3 - known
+- /4 - known
+- /login - known
+- /logout - known

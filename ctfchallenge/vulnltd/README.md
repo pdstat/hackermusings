@@ -228,3 +228,48 @@ OK so there's also a message from admin with another lead to follow
 Go to that page, it sends me to a router login page
 
 ![alt](./images/vulnltd-17.png)
+
+Quick google on the make/model of the router and the default creds are
+
+- username: admin
+- password: microbusiness
+
+And surprise surprise they haven't been changed, I'm in :)
+
+![alt](./images/vulnltd-18.png)
+
+Flag no.5 complete
+
+All the links apart from config give the 500 error, config downloads a .bak file with some base64 in it :)
+
+```
+eyJ3YW4iOnsidHlwZSI6ImFkc2wiLCJpc3AiOnsiaXAiOiJkaGNwIiwidXNlcm5hbWUiOiIwOTczMjgzNzk5OUBkc2xuZXQiLCJwYXNzd29yZCI6ImQzRnBQbzVldyJ9fSwibGFuIjp7ImlwIjoiMTkyLjE2OC4xLjEiLCJzdWJuZXQiOiIyNTUuMjU1LjI1NS4wIn0sImZpcmV3YWxsIjp7ImFjdGl2ZSI6dHJ1ZX0sIm1haW50ZW5hbmNlIjp7ImFkbWluX3VzZXIiOiJhZG1pbiIsImFkbWluX3Bhc3MiOiJtaWNyb2J1c2luZXNzIiwiZW5hYmxlX29uX3dhbiI6dHJ1ZSwiaHR0cF9wb3J0Ijo4MH0sIndlYnNpdGVzIjpbeyJhY3RpdmUiOnRydWUsIm5hbWUiOiJcL2ludHJhbmV0IiwicHJvdGVjdGVkIjp7InR5cGUiOiJiYXNpY19hdXRoIiwidXNlcm5hbWUiOiJpbnRlcm5ldCIsInBhc3N3b3JkIjoiNGdIMmtPOWUxY0U1M01rIn19XSwiZmxhZyI6IlteRkxBR15GNEFDOTQ3OEI3MUVBMDU2QTFCMkRFMERGODI0QUM2MV5GTEFHXl0ifQ==
+```
+
+Put it through the decoder and we get
+
+```
+{"wan":{"type":"adsl","isp":{"ip":"dhcp","username":"09732837999@dslnet","password":"d3FpPo5ew"}},"lan":{"ip":"192.168.1.1","subnet":"255.255.255.0"},"firewall":{"active":true},"maintenance":{"admin_user":"admin","admin_pass":"microbusiness","enable_on_wan":true,"http_port":80},"websites":[{"active":true,"name":"\/intranet","protected":{"type":"basic_auth","username":"internet","password":"4gH2kO9e1cE53Mk"}}],"flag":"[^FLAG^xxxx^FLAG^]"}
+```
+
+Flag 6 :). Just one more to go...
+
+In the background whilst looking at this page I was doing some fuzzing with the content wordlist on http://159.65.18.92/FUZZ
+
+Everything I found was already in the list of links in the admin page, apart from one thing
+
+- intranet
+
+Let's try it :). And it wants me to log in 
+
+![alt](./images/vulnltd-19.png)
+
+Well this is basic auth so let's use the username/pwd from above internet/4gH2kO9e1cE53Mk
+
+OK yet another page
+
+![alt](./images/vulnltd-20.png)
+
+Another password!
+
+![alt](./images/vulnltd-21.png)

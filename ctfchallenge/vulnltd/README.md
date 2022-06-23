@@ -196,3 +196,35 @@ Tried a fuzz on http://support.vulnltd.co.uk/FUZZ, nothing interesting
 - /js/
 
 Hmmm emailing 'start-ticket@vulnltd.co.uk' felt like it was going to give me something!?!
+
+So another evening and another look at this, send an email again and today I get a response! A glitch in the system which looks to have been fixed
+
+![alt](./images/vulnltd-10.png)
+
+Finally have flag 3 :). This is what I can see at the link
+
+![alt](./images/vulnltd-11.png)
+
+Sending an email to that address does indeed show new updates in the table. Sooo ummm remember the slack channel? Evil thoughts >:)
+
+![alt](./images/vulnltd-12.png)
+
+And they've sent an email to that address
+
+![alt](./images/vulnltd-13.png)
+
+And here it is in our support ticket list :)
+
+![alt](./images/vulnltd-14.png)
+
+I click on the button in the email to confirm, choose an account name/password and sign in. Then I have flag 4 :)
+
+![alt](./images/vulnltd-15.png)
+
+OK so there's also a message from admin with another lead to follow
+
+![alt](./images/vulnltd-16.png)
+
+Go to that page, it sends me to a router login page
+
+![alt](./images/vulnltd-17.png)

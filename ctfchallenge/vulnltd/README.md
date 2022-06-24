@@ -347,7 +347,7 @@ And I get the following back in the response :) last flag :D
 <?php if( isset($_POST["password"]) && strtoupper(md5($_POST["password"])) == '3A640F988687C7352DC72F895AA791C1' ){ ?>
 
     <h2>Download Files</h2>
-    <h4>[^FLAG^AD07238C44C1E92FA90B7363027F91D6^FLAG^]</h4>
+    <h4>[^FLAG^xxx^FLAG^]</h4>
 
     <strong>No Files to download</strong>
 

@@ -234,7 +234,7 @@ def login(wordList, formData, failureText):
         prevPassword = formData['login_password']
         formData['login_username'] = formData['login_username'].format(word)
         formData['login_password'] = formData['login_password'].format(word)
-        r = requests.post(siteurl, cookies=ctfchallenge_cookie, data=formData, proxies= {'http': 'http://127.0.0.1:8080'}, headers= {'X-Forwarded-For': generateRandomIP()})
+        r = requests.post(siteurl, cookies=ctfchallenge_cookie, data=formData, proxies=burp_proxy, headers= {'X-Forwarded-For': generateRandomIP()})
         if failureText not in r.text:
             return word
         formData['login_username'] = prevUser
@@ -262,3 +262,25 @@ And I can now login and see admins profile
 ![1](./images/vulncommerce-07.png)
 
 Looks like I skipped a few steps though as this is flag no. 8 :D
+
+So before I go and look at the subdomains lets have a look at the email-signup-trial path we found earlier.
+
+![alt](./images/vulncommerce-08.png)
+
+I signup and I get an automated email from noreply@vulncommerce.co.uk
+
+```
+Please click the following link to confirm the status of your email subscription http://www.vulncommerce.co.uk/email-status/86/93db85ed909c13838ff95ccfa94cebd9 
+```
+
+Which when I click it this is the page I see
+
+![alt](./images/vulncommerce-09.png)
+
+Notice the id 86 in the path followed my and MD5 hash `93db85ed909c13838ff95ccfa94cebd9`, quick check of crackstation and it tells me this is the MD5 hash of 86. So what other ID's are there? Let's fuzz them with Burp Intruder >:)
+
+So I get a lot back, but only one has the flag, id no.8
+
+![alt](./images/vulncommerce-10.png)
+
+Flag no.4

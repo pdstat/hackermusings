@@ -277,10 +277,80 @@ Which when I click it this is the page I see
 
 ![alt](./images/vulncommerce-09.png)
 
-Notice the id 86 in the path followed my and MD5 hash `93db85ed909c13838ff95ccfa94cebd9`, quick check of crackstation and it tells me this is the MD5 hash of 86. So what other ID's are there? Let's fuzz them with Burp Intruder >:)
+Notice the id 86 in the path followed by an MD5 hash `93db85ed909c13838ff95ccfa94cebd9`, quick check of crackstation and it tells me this is the MD5 hash of 86. So what other ID's are there? Let's fuzz them with Burp Intruder >:)
 
 So I get a lot back, but only one has the flag, id no.8
 
 ![alt](./images/vulncommerce-10.png)
 
-Flag no.4
+Flag no.4. Still missing flag 1.....
+
+Might come back to that, for now time to focus on those subdomains
+
+- hq.vulncommerce.co.uk
+- web-version-manager.vulncommerce.co.uk
+
+So hq doesn't appear to load anything in the browser. Lets check it out a bit further
+
+```
+└─$ host hq.vulncommerce.co.uk                             
+hq.vulncommerce.co.uk has address 8.8.17.22
+```
+
+OK so is this a DNS or something?
+
+Shodan.io has no record of it and an nmap scan on the first 1000 ports brings back nothing either.
+
+Similar story for web-version-manager, except it looks like an LAN IP
+
+```
+└─$ host web-version-manager.vulncommerce.co.uk            
+web-version-manager.vulncommerce.co.uk has address 192.9.1.122
+web-version-manager.vulncommerce.co.uk has IPv6 address 2a03:b0c0:1:d0::c70:1
+```
+
+Let me go back to the http://www.vulncommerce.co.uk/stats page to see if I can ping these addresses from the network test tool
+
+- 8.8.17.22 - FAIL
+- 192.9.1.122 - FAIL
+
+Hmmmm.....
+
+Lets try similar on the main domain
+
+```
+└─$ host vulncommerce.co.uk
+vulncommerce.co.uk has address 68.183.255.206
+vulncommerce.co.uk mail is handled by 10 mx.sendgrid.net
+```
+
+OK perhaps dnsrecon can give more information
+
+```
+└─$ dnsrecon -d vulncommerce.co.uk
+[*] std: Performing General Enumeration against: vulncommerce.co.uk...
+[-] DNSSEC is not configured for vulncommerce.co.uk
+[*] 	 SOA ns1.digitalocean.com 173.245.58.51
+[*] 	 SOA ns1.digitalocean.com 2400:cb00:2049:1::adf5:3a33
+[*] 	 NS ns1.digitalocean.com 173.245.58.51
+[*] 	 NS ns1.digitalocean.com 2400:cb00:2049:1::adf5:3a33
+[*] 	 NS ns2.digitalocean.com 173.245.59.41
+[*] 	 NS ns2.digitalocean.com 2400:cb00:2049:1::adf5:3b29
+[*] 	 NS ns3.digitalocean.com 198.41.222.173
+[*] 	 NS ns3.digitalocean.com 2400:cb00:2049:1::c629:dead
+[*] 	 MX mx.sendgrid.net 167.89.123.50
+[*] 	 MX mx.sendgrid.net 167.89.115.46
+[*] 	 A vulncommerce.co.uk 68.183.255.206
+[*] 	 TXT vulncommerce.co.uk [^FLAG^xxx^FLAG^]
+[*] Enumerating SRV Records
+[+] 0 Records Found
+```
+
+Aha there's the elusive flag no.1 :)
+
+OK so moving on, flag 5 would be the logical one to get next. Flag no.4 gave us an email address (simon.boswell@vulncommerce.co.uk) so that may have something to do with it.
+
+Something I have noticed is that the session id is reflected for every page in a query parameter for example
+
+```
+http://vulncommerce.co.uk/login?session_id=ODk1NDIxYmUyYzFjNjQyZWM0YjJlYmI1Mzc1MzQ1MzRjMmM5Y2Q4NGJjYmFmZWY4M2VjYjRmOWNmZjdkZTU4ODY0ZGRlZDM5MGMwNTE2ZTkzMjQxMmExZWRkNzc5ZDEzZGNiNDBkZDQ0OWYyNTRiYmUyM2I1ZDgwMWM2M2M0Mzc=```

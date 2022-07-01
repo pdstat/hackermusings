@@ -478,3 +478,79 @@ And the response
 
 ![flag](./images/vulncommerce-12.png)
 
+Finally flag 6!
+
+Right OK so on to web-version-manager, quick reminder on the DNS recon
+
+```
+└─$ dnsrecon -d web-version-manager.vulncommerce.co.uk
+[*] std: Performing General Enumeration against: web-version-manager.vulncommerce.co.uk...
+[-] DNSSEC is not configured for web-version-manager.vulncommerce.co.uk
+[*] 	 A web-version-manager.vulncommerce.co.uk 192.9.1.122
+[*] 	 AAAA web-version-manager.vulncommerce.co.uk 2a03:b0c0:1:d0::c70:1
+[*] Enumerating SRV Records
+[+] 0 Records Found
+```
+
+Now the DNS A record I obviously can't do anything with that, the AAAA record however gives an IPv6 address. I tried browsing to `http://[2a03:b0c0:1:d0::c70:1]`, but this didn't work (Network is unreachable)
+
+So this appears to be because all my IPv6 routing isn't configured locally, so for me the easiest option was again via the VPS, enabling VPS then configuration on digitalocean as outlined in this link `https://docs.digitalocean.com/products/networking/ipv6/how-to/enable/#on-existing-droplets`
+
+Then I can curl the following from my droplet
+
+```
+curl http://[2a03:b0c0:1:d0::c70:1]
+```
+
+And finally I can see content and form to login with, see below response
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Continuous Integration Server Login</title>
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container" style="margin-top:20px;">
+    <div class="row">
+        <div class="col-md-6 col-md-offset-3">
+
+            
+            <div class="panel panel-default">
+                <div class="panel-heading">Login</div>
+                <div class="panel-body">
+
+                    <form method="post">
+                        <div><label>Username</label></div>
+                        <div><input class="form-control" name="username"></div>
+                        <div style="margin-top:7px"><label>Password</label></div>
+                        <div><input type="password" class="form-control" name="password"></div>
+                        <div style="margin-top:20px"><input type="submit" class="btn btn-success pull-right" value="Login"></div>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+<script src="/js/jquery.min.js"></script>
+<script src="/js/bootstrap.min.js"></script>
+</body>
+</html>
+```
+
+Cool so I have a username/password lets tweak the curl to post the data remembering special characters....
+
+```
+curl -d username=admin --data-urlencode password=*Gk3@0Y#3DJPshtEI http://[2a03:b0c0:1:d0::c70:1]
+```
+
+And BOOM flag no.7 returned in the response challenge complete! :D
+
+```
+<h4 style="text-align: center">[^FLAG^xxx^FLAG^]</h4>
+```

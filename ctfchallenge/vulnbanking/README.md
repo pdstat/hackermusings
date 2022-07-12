@@ -124,7 +124,7 @@ Content-Length: 79
 {"message":"Value Set","flag":"[^FLAG^xxx^FLAG^]"}
 ```
 
-There's flag no.1, disclaimer I did find the next bit first :D
+There's flag no.1, disclaimer I did find the next bit first :D. Always read and understand the javascript people! :)
 
 The login help has another form associated with it
 
@@ -141,3 +141,9 @@ Which gives me a json array of logs
 ```
 
 Flag no.2 found
+
+OK so what next? I suspect I need to find a valid customer number and password, which leads me to the login-help page.
+
+```
+If you're having problems getting into your account you can enter your details below to reveal your customer number and password
+```

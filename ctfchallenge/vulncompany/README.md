@@ -239,4 +239,37 @@ Content-Type: application/x-www-form-urlencoded
 ip=127.0.0.1&page=%2F%3Fa%3Db%26b%3Dc&browser=Mozilla%2F5.0+%28X11%3B+Linux+x86_64%3B+rv%3A91.0%29+Gecko%2F20100101+Firefox%2F91.0
 ```
 
-No :(. BUT I think this must be the reason for the call to cleanInput as user input can affect the POST request to the vulnanalytics server
+No :(. BUT I think this must be the reason for the call to cleanInput as user input can affect the POST request to the vulnanalytics server.
+
+One thing to note is I can also manipulate the value of the browser POST parameter by changing my User-Agent in burp, for example
+
+The request
+
+```
+GET /?a=b&b=c HTTP/1.1
+Host: localhost:8000
+User-Agent: hello&
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Connection: close
+Upgrade-Insecure-Requests: 1
+Sec-Fetch-Dest: document
+Sec-Fetch-Mode: navigate
+Sec-Fetch-Site: none
+Sec-Fetch-User: ?1
+```
+
+Shows up as this POST request in collaborator
+
+```
+POST /data HTTP/1.1
+Host: u83gk9c8tskhap1fwwrjr60l8ce22r.oastify.com
+Accept: */*
+Content-Length: 54
+Content-Type: application/x-www-form-urlencoded
+
+ip=127.0.0.1&page=%2F%3Fa%3Dbb%3Dc&browser=hello%26
+```
+
+So browser isn't subject to sanitisation by a call to cleanInput but it is still subject to a call of http_build_query which URL encodes the request body.....

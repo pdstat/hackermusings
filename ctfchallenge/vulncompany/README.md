@@ -146,8 +146,97 @@ helloworld
 
 And the input being passed to this function is ```$_SERVER["REQUEST_URI"]```, so for example with a URL such as http://www.vulncompany.co.uk/_scripts/vulnanalytics/VulnAnalyticsClass.php the value of this would be /_scripts/vulnanalytics/VulnAnalyticsClass.php
 
-Right I think I may need VulnAnalyticsClass.php, the missing info must be in there!
+Right I think I may need VulnAnalyticsClass.php, the missing info must be in there! It could however just be a local copy of the class detailed on the vulnanalytics site.
 
 I'll assume that the vulncompany site is configured with this module, and every page view triggers the POST request mentioned in the function.
 
 So does the key lie in creating some payload via the request uri of the vulncompany domain? If so how?!
+
+I think I need to construct a local PoC so I can visualise this and observe the requests it makes to vulnanalytics.
+
+OK so first of all, if I extract and simplify the functions in the class into my own php file. Note how I've changed the URL to a Burp collab server.
+
+```php
+<html>
+    <head>
+        <title>Page view</title>
+    </head>
+    <body>
+        <?php 
+        function cleanInput( $str ){
+            $str = preg_replace('/([^a-z0-9\/-_.])/','',$str);
+            return $str;
+        }
+
+        function pageView() {
+            $url = "http://u83gk9c8tskhap1fwwrjr60l8ce22r.oastify.com/data";
+            $data = array(
+                'ip'        =>  $_SERVER["REMOTE_ADDR"],
+                'page'      =>  cleanInput($_SERVER["REQUEST_URI"]),
+                'browser'   =>  $_SERVER["HTTP_USER_AGENT"]
+            );
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST' );
+            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data) );
+            curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Length: ' . strlen( http_build_query($data) )));
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+            curl_exec($ch);
+        }
+        ?>
+        <?php pageView(); ?>
+        <?php echo '<p>REQUEST_URI: '.cleanInput($_SERVER["REQUEST_URI"]);?>
+    </body>
+</html>
+```
+
+Then start a local php dev server
+
+```
+└─$ php -S 127.0.0.1:8000
+[Thu Jul 21 03:42:19 2022] PHP 8.1.5 Development Server (http://127.0.0.1:8000) started
+[Thu Jul 21 03:42:28 2022] 127.0.0.1:45842 Accepted
+[Thu Jul 21 03:42:28 2022] 127.0.0.1:45842 [200]: GET /
+[Thu Jul 21 03:42:28 2022] 127.0.0.1:45842 Closing
+```
+
+Load up the index in the browser
+
+![alt](./images/vulncompany-08.png)
+
+And I can see the actual request in Burp collab client
+
+```
+POST /data HTTP/1.1
+Host: u83gk9c8tskhap1fwwrjr60l8ce22r.oastify.com
+Accept: */*
+Content-Length: 114
+Content-Type: application/x-www-form-urlencoded
+
+ip=127.0.0.1&page=%2F&browser=Mozilla%2F5.0+%28X11%3B+Linux+x86_64%3B+rv%3A91.0%29+Gecko%2F20100101+Firefox%2F91.0
+```
+
+Now if I try a path such as /?a=b&b=c, then request URI is transformed to /?a=bb=c and the POST request is
+
+```
+POST /data HTTP/1.1
+Host: u83gk9c8tskhap1fwwrjr60l8ce22r.oastify.com
+Accept: */*
+Content-Length: 127
+Content-Type: application/x-www-form-urlencoded
+
+ip=127.0.0.1&page=%2F%3Fa%3Dbb%3Dc&browser=Mozilla%2F5.0+%28X11%3B+Linux+x86_64%3B+rv%3A91.0%29+Gecko%2F20100101+Firefox%2F91.0
+```
+
+OK quick test by removing the call cleanInput and the same request above results in a request URI of /?a=b&b=c. So does this mean now that a new request body parameter b=c is a part of the POST request?
+
+```
+POST /data HTTP/1.1
+Host: u83gk9c8tskhap1fwwrjr60l8ce22r.oastify.com
+Accept: */*
+Content-Length: 130
+Content-Type: application/x-www-form-urlencoded
+
+ip=127.0.0.1&page=%2F%3Fa%3Db%26b%3Dc&browser=Mozilla%2F5.0+%28X11%3B+Linux+x86_64%3B+rv%3A91.0%29+Gecko%2F20100101+Firefox%2F91.0
+```
+
+No :(. BUT I think this must be the reason for the call to cleanInput as user input can affect the POST request to the vulnanalytics server

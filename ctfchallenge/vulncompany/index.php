@@ -4,16 +4,20 @@
     </head>
     <body>
         <?php 
+        function getPageData() {
+            return "woops";
+        }
+
         function cleanInput( $str ){
             $str = preg_replace('/([^a-z0-9\/-_.])/','',$str);
             return $str;
         }
 
         function pageView() {
-            $url = "http://u83gk9c8tskhap1fwwrjr60l8ce22r.oastify.com/data";
+            $url = "http://fzikj7nd9256sl86on6vvhux3o9ex3.oastify.com/data";
             $data = array(
                 'ip'        =>  $_SERVER["REMOTE_ADDR"],
-                'page'      =>  $_SERVER["REQUEST_URI"],
+                'page'      =>  cleanInput($_SERVER["REQUEST_URI"]),
                 'browser'   =>  $_SERVER["HTTP_USER_AGENT"]
             );
             $ch = curl_init($url);
@@ -25,6 +29,6 @@
         }
         ?>
         <?php pageView(); ?>
-        <?php echo '<p>REQUEST_URI: '.$_SERVER["REQUEST_URI"];?>
+        <?php echo '<p>REQUEST_URI: '.cleanInput($_SERVER["REQUEST_URI"]).'</p>';?>
     </body>
 </html>

